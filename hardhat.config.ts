@@ -1,7 +1,6 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "@nomiclabs/hardhat-web3";
-import "@tenderly/hardhat-tenderly";
 require("@nomiclabs/hardhat-truffle5");
 // import { vars } from "hardhat/config";
 const { vars } = require("hardhat/config");
@@ -26,9 +25,6 @@ const USE_FLARESCAN = process.env.USE_FLARESCAN ?? false;
 
 const GOERLI_API_URL = process.env.GOERLI_API_URL ?? "";
 const SEPOLIA_API_KEY = process.env.SEPOLIA_API_KEY ?? "";
-
-const TENDERLY_USERNAME = process.env.TENDERLY_USERNAME ?? "";
-const TENDERLY_PROJECT_SLUG = process.env.TENDERLY_PROJECT_SLUG ?? "";
 
 const XRPLEVM_EXPLORER_URL_TESTNET = process.env.XRPLEVM_EXPLORER_URL_TESTNET ?? "";
 
@@ -166,10 +162,6 @@ const config: HardhatUserConfig = {
     },
     typechain: {
         target: "truffle-v5",
-    },
-    tenderly: {
-        username: TENDERLY_USERNAME,
-        project: TENDERLY_PROJECT_SLUG,
     },
 };
 
