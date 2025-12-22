@@ -1,93 +1,120 @@
-# Hardhat smart accounts
+# Flare smart account with Hardhat
 
-
+This is a starter kit for interacting with Flare blockchain.
+It provides example code for interacting with enshrined Flare protocol, and useful deployed contracts.
+It also demonstrates, how the official Flare smart contract periphery [package](https://www.npmjs.com/package/@flarenetwork/flare-periphery-contracts) can be used in your projects.
 
 ## Getting started
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+If you are new to Hardhat please check the [Hardhat getting started doc](https://hardhat.org/hardhat-runner/docs/getting-started#overview)
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+1. Clone and install dependencies:
 
-## Add your files
+    ```console
+    git clone https://github.com/flare-foundation/flare-hardhat-starter.git
+    cd flare-hardhat-starter
+    ```
 
-* [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+    and then run:
+
+    ```console
+    yarn
+    ```
+
+    or
+
+    ```console
+    npm install --force
+    ```
+
+2. Set up `.env` file
+
+    ```console
+    cp .env.example .env
+    ```
+
+3. Change the `PRIVATE_KEY` in the `.env` file to yours
+
+4. Compile the project
+
+    ```console
+    yarn hardhat compile
+    ```
+
+    or
+
+    ```console
+    npx hardhat compile
+    ```
+
+    This will compile all `.sol` files in your `/contracts` folder.
+    It will also generate artifacts that will be needed for testing.
+    Contracts `Imports.sol` import MockContracts and Flare related mocks, thus enabling mocking of the contracts from typescript.
+
+5. Run Tests
+
+    ```console
+    yarn hardhat test
+    ```
+
+    or
+
+    ```console
+    npx hardhat test
+    ```
+
+6. Deploy
+
+    Check the `hardhat.config.ts` file, where you define which networks you want to interact with.
+    Flare mainnet & test network details are already added in that file.
+
+    Make sure that you have added API Keys in the `.env` file
+
+    ```console
+    npx hardhat run scripts/tryDeployment.ts
+    ```
+
+## Repository structure
 
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/nikerzetic-flare/hardhat-smart-accounts.git
-git branch -M main
-git push -uf origin main
+├── contracts: Solidity smart contracts
+├── scripts: Typescript scripts that interact with the blockchain
+├── test
+├── hardhat.config.ts
+├── package.json
+├── README.md
+├── tsconfig.json
+└── yarn.lock
 ```
-
-## Integrate with your tools
-
-* [Set up project integrations](https://gitlab.com/nikerzetic-flare/hardhat-smart-accounts/-/settings/integrations)
-
-## Collaborate with your team
-
-* [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
-
-## Test and Deploy
-
-Use the built-in continuous integration in GitLab.
-
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
-
-***
-
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
 
 ## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+Before opening a pull request, lint and format the code.
+You can do that by running the following commands.
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+```sh
+yarn format:fix
+```
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+```sh
+yarn lint:fix
+```
 
-## License
-For open source projects, say how it is licensed.
+## Clean repository
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+If you want to start building your projects from a repository that is already setup to work with Flare correctly, but you do not want to keep any of the examples, these are the files you should delete:
+
+- all files in the `contracts/` folder
+- all files in the `scripts/` folder, except for the `scripts/fdcExample/Base.ts` which might come in useful
+
+A shell command that does this is:
+
+```sh
+rm -rf contracts/* & mv scripts/fdcExample/Base.ts ./Base.ts & rm -rf scripts/* & mv ./Base.ts scripts/Base.ts
+```
+
+## Resources
+
+- [Flare Developer Hub](https://dev.flare.network/)
+- [Hardhat Guides](https://dev.flare.network/fdc/guides/hardhat)
+- [Hardhat Docs](https://hardhat.org/docs)
