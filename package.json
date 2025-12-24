@@ -41,7 +41,9 @@
     "prebuild": "rm -rf ./dist",
     "build": "tsc --project ./tsconfig.build.json",
     "format": "prettier --write .",
-    "lint": "eslint"
+    "format:check": "prettier .",
+    "lint": "eslint --fix",
+    "lint:check": "eslint"
   },
   "prettier": "@flarenetwork/prettier-config-flare",
   "devDependencies": {
