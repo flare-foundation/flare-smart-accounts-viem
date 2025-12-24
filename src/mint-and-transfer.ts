@@ -1,9 +1,11 @@
 import { Client, dropsToXrp, Wallet } from "xrpl";
-import { FXRPCollateralReservationInstruction } from "@flarenetwork/smart-accounts-encoder";
+import { FXRPCollateralReservationInstruction, FXRPTransferInstruction } from "@flarenetwork/smart-accounts-encoder";
 import { sendXrplPayment } from "./utils";
 import { coston2 } from "test-periphery-artifacts-wagmi-types";
 import { publicClient } from "./client";
 import type { Log } from "viem";
+import { abi as fAssetsAbi } from "./abis/FAsset";
+import { abi as iMasterAccountControllerAbi } from "./abis/IMasterAccountController";
 
 const masterAccountControllerAddress = "0x3ab31E2d943d1E8F47B275605E50Ff107f2F8393";
 const operatorXrplAddress = "rEyj8nsHLdgt79KJWzXR5BgF7ZbaohbXwq";
@@ -12,6 +14,37 @@ const operatorXrplAddress = "rEyj8nsHLdgt79KJWzXR5BgF7ZbaohbXwq";
 const assetManagerFXRPAddress = "0xc1Ca88b937d0b528842F95d5731ffB586f4fbDFA";
 
 const personalAccountAddress = "0x8c8BaeEffF5CA82eC2F5C4f81080e0B82e2E88BC";
+
+const fxrpAddress = "0x0b6A3645c240605887a5532109323A3E12273dc7";
+
+const recipientAddress = "0x1cdacde0c68e0a508ae85279375070a88554871b";
+
+type CollateralReservedEventArgsType = {
+  args: {
+    agentVault: string;
+    minter: string;
+    collateralReservationId: bigint;
+    valueUBA: bigint;
+    feeUBA: bigint;
+    firstUnderlyingBlock: bigint;
+    lastUnderlyingBlock: bigint;
+    lastUnderlyingTimestamp: bigint;
+    paymentAddress: string;
+    paymentReference: string;
+    executor: string;
+    executorFeeNatWei: bigint;
+  };
+};
+type CollateralReservedEventType = Log & CollateralReservedEventArgsType;
+
+type FxrpTransferredEventArgsType = {
+  args: {
+    personalAccount: string;
+    to: string;
+    amount: bigint;
+  };
+};
+type FxrpTransferredEventType = Log & FxrpTransferredEventArgsType;
 
 async function reserveCollateral({
   collateralReservationInstruction,
@@ -31,7 +64,7 @@ async function reserveCollateral({
   });
   console.log("collateral reservation transaction hash:", collateralReservationTransaction.result.hash, "\n");
 
-  let collateralReservationEvent: Log | undefined;
+  let collateralReservationEvent: CollateralReservedEventType | undefined;
   let collateralReservationEventFound = false;
 
   // TODO:(Nik) CollateralReserved event
@@ -41,11 +74,10 @@ async function reserveCollateral({
     eventName: "CollateralReserved",
     onLogs: (logs) => {
       for (const log of logs) {
-        collateralReservationEvent = log;
-        if (log.args.minter !== personalAccountAddress) {
+        collateralReservationEvent = log as CollateralReservedEventType;
+        if (collateralReservationEvent.args.minter !== personalAccountAddress) {
           continue;
         }
-        console.log("CollateralReserved event:", log, "\n");
         collateralReservationEventFound = true;
         break;
       }
@@ -66,7 +98,7 @@ async function sendMintPayment({
   xrplClient,
   xrplWallet,
 }: {
-  collateralReservationEvent: Log;
+  collateralReservationEvent: CollateralReservedEventType;
   xrplClient: Client;
   xrplWallet: Wallet;
 }) {
@@ -120,17 +152,86 @@ async function sendMintPayment({
   return mintingExecutedEvent;
 }
 
+async function transfer({
+  transferInstruction,
+  xrplClient,
+  xrplWallet,
+}: {
+  transferInstruction: FXRPTransferInstruction;
+  xrplClient: Client;
+  xrplWallet: Wallet;
+}) {
+  const transferTransaction = await sendXrplPayment({
+    destination: operatorXrplAddress,
+    amount: 1,
+    memos: [{ Memo: { MemoData: transferInstruction.encode().slice(2) } }],
+    wallet: xrplWallet,
+    client: xrplClient,
+  });
+  console.log("transfer transaction hash:", transferTransaction.result.hash, "\n");
+
+  let fxrpTransferredEvent: FxrpTransferredEventType | undefined;
+  let fxrpTransferredEventFound = false;
+
+  // TODO:(Nik) CollateralReserved event
+  const unwatchCollateralReserved = publicClient.watchContractEvent({
+    address: masterAccountControllerAddress,
+    abi: iMasterAccountControllerAbi,
+    eventName: "FxrpTransferred",
+    onLogs: (logs) => {
+      for (const log of logs) {
+        fxrpTransferredEvent = log as FxrpTransferredEventType;
+
+        if (
+          fxrpTransferredEvent.args.personalAccount !== personalAccountAddress &&
+          fxrpTransferredEvent.args.to !== recipientAddress
+        ) {
+          continue;
+        }
+        fxrpTransferredEventFound = true;
+        break;
+      }
+    },
+  });
+
+  console.log("Waiting for FxrpTransferred event...");
+  while (!fxrpTransferredEventFound) {
+    await new Promise((resolve) => setTimeout(resolve, 10000));
+  }
+  unwatchCollateralReserved();
+
+  return fxrpTransferredEvent;
+}
+
+async function logBalances(recipientAddress: string) {
+  const personalAccountFxrpBalance = await publicClient.readContract({
+    address: fxrpAddress,
+    abi: fAssetsAbi,
+    functionName: "balanceOf",
+    args: [personalAccountAddress],
+  });
+  console.log("Personal account FXRP balance:", personalAccountFxrpBalance, "\n");
+
+  const recipientAddressFxrpBalance = await publicClient.readContract({
+    address: fxrpAddress,
+    abi: fAssetsAbi,
+    functionName: "balanceOf",
+    args: [recipientAddress],
+  });
+  console.log("Recipient address FXRP balance:", recipientAddressFxrpBalance, "\n");
+}
+
 async function main() {
   // TODO:(Nik) Get from the MasterAccountController contract
-
-  const xrplClient = new Client(process.env.XRPL_TESTNET_RPC_URL!);
-  const xrplWallet = Wallet.fromSeed(process.env.XRPL_SEED!);
 
   const collateralReservationData = {
     walletId: 0,
     value: 1,
     agentVaultId: 1,
   };
+
+  const xrplClient = new Client(process.env.XRPL_TESTNET_RPC_URL!);
+  const xrplWallet = Wallet.fromSeed(process.env.XRPL_SEED!);
 
   const collateralReservationInstruction = new FXRPCollateralReservationInstruction(collateralReservationData);
   console.log("Encoded collateral reservation instruction:", collateralReservationInstruction.encode().slice(2), "\n");
@@ -153,7 +254,22 @@ async function main() {
   });
   console.log("MintingExecuted event:", mintingExecutedEvent, "\n");
 
-  // TODO:(Nik) transfer
+  const transferInstruction = new FXRPTransferInstruction({
+    walletId: 0,
+    value: 1,
+    recipientAddress: recipientAddress.slice(2),
+  });
+  console.log("Encoded transfer instruction:", transferInstruction.encode(), "\n");
+
+  await logBalances(recipientAddress);
+
+  await transfer({
+    transferInstruction,
+    xrplClient,
+    xrplWallet,
+  });
+
+  await logBalances(recipientAddress);
 }
 
 void main()
