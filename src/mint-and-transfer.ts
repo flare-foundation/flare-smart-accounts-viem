@@ -4,9 +4,7 @@ import { sendXrplPayment } from "./utils/xrpl";
 import { coston2 } from "test-periphery-artifacts-wagmi-types";
 import { publicClient } from "./utils/client";
 import type { Address, Log } from "viem";
-import type { Log } from "viem";
-import { abi as fAssetsAbi } from "./abis/FAsset";
-import { abi as iMasterAccountControllerAbi } from "./abis/IMasterAccountController";
+import { abi } from "./abis/IMasterAccountController";
 import {
   getOperatorXrplAddress,
   getPersonalAccountAddress,
@@ -14,8 +12,7 @@ import {
 } from "./utils/smart-accounts";
 import type { CollateralReservedEventType, FxrpTransferredEventType } from "./utils/event-types";
 import { getContractAddressByName } from "./utils/flare-contract-registry";
-
-const FXRP_ADDRESS = "0x0b6A3645c240605887a5532109323A3E12273dc7";
+import { getFxrpBalance } from "./utils/fassets";
 
 const recipientAddress = "0x1cdacde0c68e0a508ae85279375070a88554871b";
 
@@ -33,6 +30,7 @@ async function reserveCollateral({
   const operatorXrplAddress = await getOperatorXrplAddress();
   const collateralReservationTransaction = await sendXrplPayment({
     destination: operatorXrplAddress,
+    // TODO:(Nik) get the instruction fee from the MasterAccountController contract, InstructionFeesFacet
     amount: 1,
     memos: [{ Memo: { MemoData: collateralReservationInstruction.encode().slice(2) } }],
     wallet: xrplWallet,
@@ -45,7 +43,6 @@ async function reserveCollateral({
 
   const assetManagerFXRPAddress = await getContractAddressByName("AssetManagerFXRP");
 
-  // TODO:(Nik) CollateralReserved event
   const unwatchCollateralReserved = publicClient.watchContractEvent({
     address: assetManagerFXRPAddress,
     abi: coston2.iAssetManagerAbi,
@@ -156,10 +153,9 @@ async function transfer({
   let fxrpTransferredEvent: FxrpTransferredEventType | undefined;
   let fxrpTransferredEventFound = false;
 
-  // TODO:(Nik) CollateralReserved event
-  const unwatchCollateralReserved = publicClient.watchContractEvent({
+  const unwatchFxrpTransferred = publicClient.watchContractEvent({
     address: MASTER_ACCOUNT_CONTROLLER_ADDRESS,
-    abi: iMasterAccountControllerAbi,
+    abi: abi,
     eventName: "FxrpTransferred",
     onLogs: (logs) => {
       for (const log of logs) {
@@ -181,26 +177,16 @@ async function transfer({
   while (!fxrpTransferredEventFound) {
     await new Promise((resolve) => setTimeout(resolve, 10000));
   }
-  unwatchCollateralReserved();
+  unwatchFxrpTransferred();
 
   return fxrpTransferredEvent;
 }
 
-async function logBalances(personalAccountAddress: string, recipientAddress: string) {
-  const personalAccountFxrpBalance = await publicClient.readContract({
-    address: FXRP_ADDRESS,
-    abi: fAssetsAbi,
-    functionName: "balanceOf",
-    args: [personalAccountAddress],
-  });
+async function logBalances(personalAccountAddress: Address, recipientAddress: Address) {
+  const personalAccountFxrpBalance = await getFxrpBalance(personalAccountAddress);
   console.log("Personal account FXRP balance:", personalAccountFxrpBalance, "\n");
 
-  const recipientAddressFxrpBalance = await publicClient.readContract({
-    address: FXRP_ADDRESS,
-    abi: fAssetsAbi,
-    functionName: "balanceOf",
-    args: [recipientAddress],
-  });
+  const recipientAddressFxrpBalance = await getFxrpBalance(recipientAddress);
   console.log("Recipient address FXRP balance:", recipientAddressFxrpBalance, "\n");
 }
 
