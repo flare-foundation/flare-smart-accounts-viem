@@ -1,3 +1,4 @@
+import type { Address } from "viem";
 import { abi as iMasterAccountControllerAbi } from "../abis/IMasterAccountController";
 import { publicClient } from "./client";
 
@@ -10,8 +11,8 @@ export async function getOperatorXrplAddress() {
     functionName: "getXrplProviderWallets",
     args: [],
   })) as string[];
-  console.log("Operator XRPL address:", operatorXrplAddress[0], "\n");
 
+  // WARN:(Nik) Here we assume that there is only one provider wallet available.
   return operatorXrplAddress[0] as string;
 }
 
@@ -23,6 +24,71 @@ export async function getPersonalAccountAddress(xrplAddress: string) {
     args: [xrplAddress],
   });
 
-  console.log("Personal account address:", personalAccountAddress, "\n");
-  return personalAccountAddress as string;
+  return personalAccountAddress as Address;
+}
+
+export type Vault = {
+  id: bigint;
+  address: Address;
+  type: number;
+};
+
+export type GetVaultsReturnType = [bigint[], string[], number[]];
+
+export async function getVaults(): Promise<Vault[]> {
+  const _vaults = (await publicClient.readContract({
+    address: MASTER_ACCOUNT_CONTROLLER_ADDRESS,
+    abi: iMasterAccountControllerAbi,
+    functionName: "getVaults",
+    args: [],
+  })) as GetVaultsReturnType;
+
+  const length = _vaults[0].length;
+  if (length === 0) {
+    return [];
+  }
+
+  const vaults = new Array(length) as Vault[];
+
+  _vaults[0].forEach((id, index) => {
+    vaults[index] = {
+      id,
+      address: _vaults[1][index]! as Address,
+      type: _vaults[2][index]!,
+    };
+  });
+
+  return vaults;
+}
+
+export type AgentVault = {
+  id: bigint;
+  address: Address;
+};
+
+export type GetAgentVaultsReturnType = [bigint[], string[]];
+
+export async function getAgentVaults(): Promise<AgentVault[]> {
+  const _vaults = (await publicClient.readContract({
+    address: MASTER_ACCOUNT_CONTROLLER_ADDRESS,
+    abi: iMasterAccountControllerAbi,
+    functionName: "getVaults",
+    args: [],
+  })) as GetVaultsReturnType;
+
+  const length = _vaults[0].length;
+  if (length === 0) {
+    return [];
+  }
+
+  const vaults = new Array(length) as AgentVault[];
+
+  _vaults[0].forEach((id, index) => {
+    vaults[index] = {
+      id,
+      address: _vaults[1][index]! as Address,
+    };
+  });
+
+  return vaults;
 }
