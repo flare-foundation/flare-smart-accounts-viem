@@ -3,6 +3,7 @@ import { FXRPCollateralReservationInstruction, FXRPTransferInstruction } from "@
 import { sendXrplPayment } from "./utils/xrpl";
 import { coston2 } from "test-periphery-artifacts-wagmi-types";
 import { publicClient } from "./utils/client";
+import type { Address, Log } from "viem";
 import type { Log } from "viem";
 import { abi as fAssetsAbi } from "./abis/FAsset";
 import { abi as iMasterAccountControllerAbi } from "./abis/IMasterAccountController";

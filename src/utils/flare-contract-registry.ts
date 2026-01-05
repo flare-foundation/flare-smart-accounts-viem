@@ -1,3 +1,4 @@
+import type { Address } from "viem";
 import { abi } from "../abis/IFlareContractRegistry";
 import { publicClient } from "./client";
 
@@ -11,5 +12,5 @@ export async function getContractAddressByName(name: string) {
     args: [name],
   });
 
-  return contractAddress as `0x${string}`;
+  return contractAddress as Address;
 }
