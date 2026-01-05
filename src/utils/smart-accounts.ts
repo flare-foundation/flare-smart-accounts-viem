@@ -1,7 +1,7 @@
 import { abi as iMasterAccountControllerAbi } from "../abis/IMasterAccountController";
 import { publicClient } from "./client";
 
-const MASTER_ACCOUNT_CONTROLLER_ADDRESS = "0x3ab31E2d943d1E8F47B275605E50Ff107f2F8393";
+export const MASTER_ACCOUNT_CONTROLLER_ADDRESS = "0x3ab31E2d943d1E8F47B275605E50Ff107f2F8393";
 
 export async function getOperatorXrplAddress() {
   const operatorXrplAddress = (await publicClient.readContract({
