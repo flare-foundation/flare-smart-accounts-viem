@@ -61,6 +61,7 @@
     "vitest": "^4.0.15"
   },
   "dependencies": {
+    "@flarenetwork/flare-wagmi-periphery-package": "^1.0.0",
     "@flarenetwork/smart-accounts-encoder": "^0.0.8",
     "test-periphery-artifacts-wagmi-types": "^1.0.12",
     "viem": "2.x",

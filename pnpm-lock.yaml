@@ -8,12 +8,12 @@ importers:
 
   .:
     dependencies:
+      '@flarenetwork/flare-wagmi-periphery-package':
+        specifier: ^1.0.0
+        version: 1.0.0(@tanstack/query-core@5.90.12)(@tanstack/react-query@5.90.12(react@18.3.1))(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(react@18.3.1)(utf-8-validate@5.0.10)(ws@8.18.3(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.2.1)
       '@flarenetwork/smart-accounts-encoder':
         specifier: ^0.0.8
         version: 0.0.8
-      test-periphery-artifacts-wagmi-types:
-        specifier: ^1.0.12
-        version: 1.0.12(@tanstack/query-core@5.90.12)(@tanstack/react-query@5.90.12(react@18.3.1))(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(react@18.3.1)(utf-8-validate@5.0.10)(ws@8.18.3(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.2.1)
       viem:
         specifier: 2.x
         version: 2.43.3(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.2.1)
@@ -490,6 +490,9 @@ packages:
 
   '@flarenetwork/eslint-config-flare@0.0.1':
     resolution: {integrity: sha512-X3c6qSE42Vr86je0Xbvfoqab5P5tsqm1Mo98g1trRnqH/Ckwc9KGAe8TqgD1B8boxiis1XQ7+FLgdqxIraViVw==}
+
+  '@flarenetwork/flare-wagmi-periphery-package@1.0.0':
+    resolution: {integrity: sha512-phU6Yepuolz9fx10RWK0TPjhxSqgMIu0xFO4HntmX11VlpFBP28eILoC7SrhlzGOPluitkPogGrZPqqkB1l1RQ==}
 
   '@flarenetwork/prettier-config-flare@0.0.2':
     resolution: {integrity: sha512-XgO2ia3W2iMrbujPDPrVcp9vzMRTqYqtKMgGn1ksWDsZNWOsKXkSpoWgm7IPWvj/M35i0HMC+eIj02QOAwjUMQ==}
@@ -2718,9 +2721,6 @@ packages:
     resolution: {integrity: sha512-qpCAvRl9stuOHveKsn7HncJRvv501qIacKzQlO/+Lwxc9+0q2wLyv4Dfvt80/DPn2pqOBsJdDiogXGR9+OvwRw==}
     engines: {node: '>=8'}
 
-  test-periphery-artifacts-wagmi-types@1.0.12:
-    resolution: {integrity: sha512-bNhHLcjezRvxEjdyBtF/jHmrFPFQu3WhSEIB2UmOI9eH87KfxCzVlJJ2pqXT9avye7Av29dhOLoF3vBhI6rl3Q==}
-
   text-encoding-utf-8@1.0.2:
     resolution: {integrity: sha512-8bw4MY9WjdsD2aMtO0OzOCY3pXGYNx2d2FfHRVUKkiCPDWjKuOlhLVASS+pD7VkLTVjW268LYJHwsnPFlBpbAg==}
 
@@ -3528,6 +3528,51 @@ snapshots:
       - eslint
       - supports-color
       - typescript
+
+  '@flarenetwork/flare-wagmi-periphery-package@1.0.0(@tanstack/query-core@5.90.12)(@tanstack/react-query@5.90.12(react@18.3.1))(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(react@18.3.1)(utf-8-validate@5.0.10)(ws@8.18.3(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.2.1)':
+    dependencies:
+      '@types/node': 24.10.4
+      '@wagmi/cli': 2.8.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)
+      typescript: 5.9.3
+      viem: 2.43.3(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.2.1)
+      wagmi: 2.19.5(@tanstack/query-core@5.90.12)(@tanstack/react-query@5.90.12(react@18.3.1))(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(react@18.3.1)(typescript@5.9.3)(utf-8-validate@5.0.10)(viem@2.43.3(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.2.1))(ws@8.18.3(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.2.1)
+    transitivePeerDependencies:
+      - '@azure/app-configuration'
+      - '@azure/cosmos'
+      - '@azure/data-tables'
+      - '@azure/identity'
+      - '@azure/keyvault-secrets'
+      - '@azure/storage-blob'
+      - '@capacitor/preferences'
+      - '@deno/kv'
+      - '@netlify/blobs'
+      - '@planetscale/database'
+      - '@react-native-async-storage/async-storage'
+      - '@tanstack/query-core'
+      - '@tanstack/react-query'
+      - '@types/react'
+      - '@upstash/redis'
+      - '@vercel/blob'
+      - '@vercel/functions'
+      - '@vercel/kv'
+      - aws4fetch
+      - bufferutil
+      - db0
+      - debug
+      - encoding
+      - expo-auth-session
+      - expo-crypto
+      - expo-web-browser
+      - fastestsmallesttextencoderdecoder
+      - immer
+      - ioredis
+      - react
+      - react-native
+      - supports-color
+      - uploadthing
+      - utf-8-validate
+      - ws
+      - zod
 
   '@flarenetwork/prettier-config-flare@0.0.2(prettier@3.7.4)':
     dependencies:
@@ -6874,51 +6919,6 @@ snapshots:
   supports-color@7.2.0:
     dependencies:
       has-flag: 4.0.0
-
-  test-periphery-artifacts-wagmi-types@1.0.12(@tanstack/query-core@5.90.12)(@tanstack/react-query@5.90.12(react@18.3.1))(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(react@18.3.1)(utf-8-validate@5.0.10)(ws@8.18.3(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.2.1):
-    dependencies:
-      '@types/node': 24.10.4
-      '@wagmi/cli': 2.8.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)
-      typescript: 5.9.3
-      viem: 2.43.3(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.2.1)
-      wagmi: 2.19.5(@tanstack/query-core@5.90.12)(@tanstack/react-query@5.90.12(react@18.3.1))(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(react@18.3.1)(typescript@5.9.3)(utf-8-validate@5.0.10)(viem@2.43.3(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.2.1))(ws@8.18.3(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.2.1)
-    transitivePeerDependencies:
-      - '@azure/app-configuration'
-      - '@azure/cosmos'
-      - '@azure/data-tables'
-      - '@azure/identity'
-      - '@azure/keyvault-secrets'
-      - '@azure/storage-blob'
-      - '@capacitor/preferences'
-      - '@deno/kv'
-      - '@netlify/blobs'
-      - '@planetscale/database'
-      - '@react-native-async-storage/async-storage'
-      - '@tanstack/query-core'
-      - '@tanstack/react-query'
-      - '@types/react'
-      - '@upstash/redis'
-      - '@vercel/blob'
-      - '@vercel/functions'
-      - '@vercel/kv'
-      - aws4fetch
-      - bufferutil
-      - db0
-      - debug
-      - encoding
-      - expo-auth-session
-      - expo-crypto
-      - expo-web-browser
-      - fastestsmallesttextencoderdecoder
-      - immer
-      - ioredis
-      - react
-      - react-native
-      - supports-color
-      - uploadthing
-      - utf-8-validate
-      - ws
-      - zod
 
   text-encoding-utf-8@1.0.2: {}
 

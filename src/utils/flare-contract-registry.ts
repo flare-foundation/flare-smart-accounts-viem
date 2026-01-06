@@ -1,5 +1,5 @@
 import { publicClient } from "./client";
-import { coston2 } from "test-periphery-artifacts-wagmi-types";
+import { coston2 } from "@flarenetwork/flare-wagmi-periphery-package";
 
 const FLARE_CONTRACT_REGISTRY_ADDRESS = "0xaD67FE66660Fb8dFE9d6b1b4240d8650e30F6019";
 

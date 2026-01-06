@@ -1,7 +1,7 @@
 import { Client, dropsToXrp, Wallet } from "xrpl";
 import { UpshiftCollateralReservationAndDepositInstruction } from "@flarenetwork/smart-accounts-encoder";
 import { sendXrplPayment } from "./utils/xrpl";
-import { coston2 } from "test-periphery-artifacts-wagmi-types";
+import { coston2 } from "@flarenetwork/flare-wagmi-periphery-package";
 import { publicClient } from "./utils/client";
 import type { Address, Log } from "viem";
 import { abi as iMasterAccountControllerAbi } from "./abis/IMasterAccountController";
