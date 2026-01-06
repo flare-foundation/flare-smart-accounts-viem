@@ -51,7 +51,7 @@ async function sendInstruction({
     onLogs: (logs) => {
       for (const log of logs) {
         collateralReservationEvent = log as CollateralReservedEventType;
-        if (collateralReservationEvent.args.minter !== personalAccountAddress) {
+        if (collateralReservationEvent.args.minter.toLowerCase() !== personalAccountAddress.toLowerCase()) {
           continue;
         }
         collateralReservationEventFound = true;
@@ -149,8 +149,8 @@ async function watchForDepositEvent({
       for (const log of logs) {
         depositedEvent = log as DepositedEventType;
         if (
-          depositedEvent.args.personalAccount !== personalAccountAddress ||
-          depositedEvent.args.vault !== vaultAddress
+          depositedEvent.args.personalAccount.toLowerCase() !== personalAccountAddress.toLowerCase() ||
+          depositedEvent.args.vault.toLowerCase() !== vaultAddress.toLowerCase()
         ) {
           continue;
         }
@@ -202,6 +202,7 @@ async function main() {
   const xrplWallet = Wallet.fromSeed(process.env.XRPL_SEED!);
 
   const personalAccountAddress = await getPersonalAccountAddress(xrplWallet.address);
+  console.log("Personal account address:", personalAccountAddress, "\n");
 
   await logBalances(personalAccountAddress);
 

@@ -50,7 +50,7 @@ async function reserveCollateral({
     onLogs: (logs) => {
       for (const log of logs) {
         collateralReservationEvent = log as CollateralReservedEventType;
-        if (collateralReservationEvent.args.minter !== personalAccountAddress) {
+        if (collateralReservationEvent.args.minter.toLowerCase() !== personalAccountAddress.toLowerCase()) {
           continue;
         }
         collateralReservationEventFound = true;
@@ -113,7 +113,6 @@ async function sendMintPayment({
         if (log.args.collateralReservationId !== collateralReservationId) {
           continue;
         }
-        console.log("MintingExecuted event:", log, "\n");
         mintingExecutedEvent = log;
         mintingExecutedEventFound = true;
         return;
@@ -150,36 +149,36 @@ async function transfer({
   });
   console.log("transfer transaction hash:", transferTransaction.result.hash, "\n");
 
-  let fxrpTransferredEvent: FxrpTransferredEventType | undefined;
-  let fxrpTransferredEventFound = false;
+  let fXrpTransferredEvent: FxrpTransferredEventType | undefined;
+  let fXrpTransferredEventFound = false;
 
   const unwatchFxrpTransferred = publicClient.watchContractEvent({
     address: MASTER_ACCOUNT_CONTROLLER_ADDRESS,
     abi: abi,
-    eventName: "FxrpTransferred",
+    eventName: "FXrpTransferred",
     onLogs: (logs) => {
       for (const log of logs) {
-        fxrpTransferredEvent = log as FxrpTransferredEventType;
-
+        console.log(log);
+        fXrpTransferredEvent = log as FxrpTransferredEventType;
         if (
-          fxrpTransferredEvent.args.personalAccount !== personalAccountAddress ||
-          fxrpTransferredEvent.args.to !== recipientAddress
+          fXrpTransferredEvent.args.personalAccount.toLowerCase() !== personalAccountAddress.toLowerCase() ||
+          fXrpTransferredEvent.args.to.toLowerCase() !== recipientAddress.toLowerCase()
         ) {
           continue;
         }
-        fxrpTransferredEventFound = true;
+        fXrpTransferredEventFound = true;
         break;
       }
     },
   });
 
-  console.log("Waiting for FxrpTransferred event...");
-  while (!fxrpTransferredEventFound) {
+  console.log("Waiting for FXrpTransferred event...");
+  while (!fXrpTransferredEventFound) {
     await new Promise((resolve) => setTimeout(resolve, 10000));
   }
   unwatchFxrpTransferred();
 
-  return fxrpTransferredEvent;
+  return fXrpTransferredEvent;
 }
 
 async function logBalances(personalAccountAddress: Address, recipientAddress: Address) {
@@ -201,6 +200,7 @@ async function main() {
   const xrplWallet = Wallet.fromSeed(process.env.XRPL_SEED!);
 
   const personalAccountAddress = await getPersonalAccountAddress(xrplWallet.address);
+  console.log("Personal account address:", personalAccountAddress, "\n");
 
   const collateralReservationInstruction = new FXRPCollateralReservationInstruction(collateralReservationData);
   console.log("Encoded collateral reservation instruction:", collateralReservationInstruction.encode().slice(2), "\n");
