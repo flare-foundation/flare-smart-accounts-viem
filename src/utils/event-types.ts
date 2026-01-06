@@ -2,8 +2,8 @@ import type { Address, Log } from "viem";
 
 type CollateralReservedEventArgsType = {
   args: {
-    agentVault: string;
-    minter: string;
+    agentVault: Address;
+    minter: Address;
     collateralReservationId: bigint;
     valueUBA: bigint;
     feeUBA: bigint;
@@ -12,7 +12,7 @@ type CollateralReservedEventArgsType = {
     lastUnderlyingTimestamp: bigint;
     paymentAddress: string;
     paymentReference: string;
-    executor: string;
+    executor: Address;
     executorFeeNatWei: bigint;
   };
 };
@@ -20,8 +20,8 @@ export type CollateralReservedEventType = Log & CollateralReservedEventArgsType;
 
 type FxrpTransferredEventArgsType = {
   args: {
-    personalAccount: string;
-    to: string;
+    personalAccount: Address;
+    to: Address;
     amount: bigint;
   };
 };
