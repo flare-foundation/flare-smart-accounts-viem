@@ -162,7 +162,7 @@ async function transfer({
         fxrpTransferredEvent = log as FxrpTransferredEventType;
 
         if (
-          fxrpTransferredEvent.args.personalAccount !== personalAccountAddress &&
+          fxrpTransferredEvent.args.personalAccount !== personalAccountAddress ||
           fxrpTransferredEvent.args.to !== recipientAddress
         ) {
           continue;
