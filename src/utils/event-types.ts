@@ -1,4 +1,4 @@
-import type { Log } from "viem";
+import type { Address, Log } from "viem";
 
 type CollateralReservedEventArgsType = {
   args: {
@@ -26,3 +26,13 @@ type FxrpTransferredEventArgsType = {
   };
 };
 export type FxrpTransferredEventType = Log & FxrpTransferredEventArgsType;
+
+type DepositedEventArgsType = {
+  args: {
+    personalAccount: Address;
+    vault: Address;
+    amount: bigint;
+    shares: bigint;
+  };
+};
+export type DepositedEventType = Log & DepositedEventArgsType;
