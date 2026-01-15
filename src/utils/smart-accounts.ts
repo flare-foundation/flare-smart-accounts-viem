@@ -72,7 +72,7 @@ export async function getAgentVaults(): Promise<AgentVault[]> {
   const _vaults = (await publicClient.readContract({
     address: MASTER_ACCOUNT_CONTROLLER_ADDRESS,
     abi: iMasterAccountControllerAbi,
-    functionName: "getVaults",
+    functionName: "getAgentVaults",
     args: [],
   })) as GetVaultsReturnType;
 
