@@ -1,7 +1,7 @@
 {
-  "name": "smart-accounts-encoder",
-  "version": "0.0.9",
-  "description": "Encode and decode instructions to be used in Flare smart account",
+  "name": "@flarenetwork/flare-smart-accounts-viem",
+  "version": "0.0.1",
+  "description": "Example TypeScript scripts for interacting with the Flare smart accounts using Viem.",
   "author": "Flare Network",
   "license": "MIT",
   "keywords": [
@@ -10,7 +10,6 @@
     "blockchain",
     "web3",
     "account-abstraction",
-    "encoding",
     "xrpl"
   ],
   "homepage": "",
@@ -63,7 +62,6 @@
   "dependencies": {
     "@flarenetwork/flare-wagmi-periphery-package": "^1.0.0",
     "@flarenetwork/smart-accounts-encoder": "^0.0.8",
-    "test-periphery-artifacts-wagmi-types": "^1.0.12",
     "viem": "2.x",
     "xrpl": "^4.5.0"
   }

@@ -1,120 +1,73 @@
-# Flare smart account with Hardhat
+<!-- LOGO -->
 
-This is a starter kit for interacting with Flare blockchain.
-It provides example code for interacting with enshrined Flare protocol, and useful deployed contracts.
-It also demonstrates, how the official Flare smart contract periphery [package](https://www.npmjs.com/package/@flarenetwork/flare-periphery-contracts) can be used in your projects.
+<div align="center">
+  <a href="https://flare.network/" target="blank">
+    <img src="https://content.flare.network/Flare-2.svg" width="300" alt="Flare Logo" />
+  </a>
+  <br />
+  Example TypeScript scripts for interacting with the Flare smart accounts using Viem.
+  <br />
+  <a href="#PROJECT_NAME">About</a>
+  ·
+  <a href="CONTRIBUTING.md">Contributing</a>
+  ·
+  <a href="SECURITY.md">Security</a>
+  ·
+  <a href="CHANGELOG.md">Changelog</a>
+</div>
 
-## Getting started
+# Flare smart account with Viem
 
-If you are new to Hardhat please check the [Hardhat getting started doc](https://hardhat.org/hardhat-runner/docs/getting-started#overview)
+This repository contains example code for interacting with the Flare smart accounts system using the Viem library. All example scripts are located in the `src` directory.
 
-1. Clone and install dependencies:
+```sh
+src
+├── abis
+├── utils
+├── index.ts
+├── mint-and-transfer.ts: mint FXRP and transfer it to a Flare account; essenctially, this allows you to mint FXRP to an arbitrary Flare address.
+├── README.md
+├── state-lookup.ts: get personal account of an XRPL address, its FXRP balance, the XRP balance of the address...
+└── upshift-mint-and-deposit.ts: mint FXRP and deposit it to an Upshift type vault
+```
 
-   ```console
-   git clone https://github.com/flare-foundation/flare-hardhat-starter.git
-   cd flare-hardhat-starter
+## Setup
+
+1. **Clone the repository:**
+   ```sh
+   git clone <repository-url>
+   cd flare-smart-accounts-viem
    ```
 
-   and then run:
-
-   ```console
-   yarn
-   ```
-
-   or
-
-   ```console
-   npm install --force
-   ```
-
-2. Set up `.env` file
-
-   ```console
+2. **Create a `.env` file:**
+   ```sh
    cp .env.example .env
    ```
 
-3. Change the `PRIVATE_KEY` in the `.env` file to yours
+3. **Configure your environment:**
+   Edit the `.env` file and add your configuration values (private keys, RPC URLs, etc.).
 
-4. Compile the project
-
-   ```console
-   yarn hardhat compile
+4. **Install dependencies:**
+   ```sh
+   pnpm install
    ```
+   
+   > **Note:** You can use `npm` or `yarn` instead of `pnpm` if you prefer.
 
-   or
+## Running Scripts
 
-   ```console
-   npx hardhat compile
-   ```
-
-   This will compile all `.sol` files in your `/contracts` folder.
-   It will also generate artifacts that will be needed for testing.
-   Contracts `Imports.sol` import MockContracts and Flare related mocks, thus enabling mocking of the contracts from typescript.
-
-5. Run Tests
-
-   ```console
-   yarn hardhat test
-   ```
-
-   or
-
-   ```console
-   npx hardhat test
-   ```
-
-6. Deploy
-
-   Check the `hardhat.config.ts` file, where you define which networks you want to interact with.
-   Flare mainnet & test network details are already added in that file.
-
-   Make sure that you have added API Keys in the `.env` file
-
-   ```console
-   npx hardhat run scripts/tryDeployment.ts
-   ```
-
-## Repository structure
-
-```
-├── contracts: Solidity smart contracts
-├── scripts: Typescript scripts that interact with the blockchain
-├── test
-├── hardhat.config.ts
-├── package.json
-├── README.md
-├── tsconfig.json
-└── yarn.lock
-```
-
-## Contributing
-
-Before opening a pull request, lint and format the code.
-You can do that by running the following commands.
+Execute any script in the `src` directory using:
 
 ```sh
-yarn format:fix
+pnpm run script <path-to-file>
 ```
 
+**Example:**
 ```sh
-yarn lint:fix
-```
-
-## Clean repository
-
-If you want to start building your projects from a repository that is already setup to work with Flare correctly, but you do not want to keep any of the examples, these are the files you should delete:
-
-- all files in the `contracts/` folder
-- all files in the `scripts/` folder, except for the `scripts/fdcExample/Base.ts` which might come in useful
-
-A shell command that does this is:
-
-```sh
-rm -rf contracts/* & mv scripts/fdcExample/Base.ts ./Base.ts & rm -rf scripts/* & mv ./Base.ts scripts/Base.ts
+pnpm run script src/mint-and-transfer.ts
 ```
 
 ## Resources
 
 - [Flare Developer Hub](https://dev.flare.network/)
-- [Hardhat Guides](https://dev.flare.network/fdc/guides/hardhat)
-- [Hardhat Docs](https://hardhat.org/docs)
+- [Viem Documentation](https://viem.sh/)
