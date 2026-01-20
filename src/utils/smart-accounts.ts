@@ -1,6 +1,7 @@
 import type { Address } from "viem";
 import { abi as iMasterAccountControllerAbi } from "../abis/IMasterAccountController";
 import { publicClient } from "./client";
+import { dropsToXrp } from "xrpl";
 
 export const MASTER_ACCOUNT_CONTROLLER_ADDRESS = "0x3ab31E2d943d1E8F47B275605E50Ff107f2F8393";
 
@@ -91,4 +92,14 @@ export async function getAgentVaults(): Promise<AgentVault[]> {
   });
 
   return vaults;
+}
+
+export async function getInstructionFee(encodedInstruction: string) {
+  const requestFee = await publicClient.readContract({
+    address: MASTER_ACCOUNT_CONTROLLER_ADDRESS,
+    abi: iMasterAccountControllerAbi,
+    functionName: "getInstructionFee",
+    args: [encodedInstruction.slice(0, 2)],
+  });
+  return dropsToXrp(Number(requestFee));
 }

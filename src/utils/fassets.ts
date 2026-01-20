@@ -13,3 +13,13 @@ export async function getFxrpBalance(address: Address) {
   });
   return fxrpBalance;
 }
+
+export async function getFxrpDecimals() {
+  const decimals = await publicClient.readContract({
+    address: FXRP_ADDRESS,
+    abi: abi,
+    functionName: "decimals",
+    args: [],
+  });
+  return decimals;
+}

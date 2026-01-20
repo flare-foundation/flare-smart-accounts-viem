@@ -6,13 +6,14 @@ import { publicClient } from "./utils/client";
 import type { Address, Log } from "viem";
 import { abi } from "./abis/IMasterAccountController";
 import {
+  getInstructionFee,
   getOperatorXrplAddress,
   getPersonalAccountAddress,
   MASTER_ACCOUNT_CONTROLLER_ADDRESS,
 } from "./utils/smart-accounts";
 import type { CollateralReservedEventType, FxrpTransferredEventType } from "./utils/event-types";
 import { getContractAddressByName } from "./utils/flare-contract-registry";
-import { getFxrpBalance } from "./utils/fassets";
+import { getFxrpBalance, getFxrpDecimals } from "./utils/fassets";
 
 const recipientAddress = "0x1cdacde0c68e0a508ae85279375070a88554871b";
 
@@ -28,11 +29,16 @@ async function reserveCollateral({
   xrplWallet: Wallet;
 }) {
   const operatorXrplAddress = await getOperatorXrplAddress();
+
+  const encodedInstruction = collateralReservationInstruction.encode().slice(2);
+  const instructionFee = await getInstructionFee(encodedInstruction);
+  console.log("Instruction fee:", instructionFee, "\n");
+
   const collateralReservationTransaction = await sendXrplPayment({
     destination: operatorXrplAddress,
     // TODO:(Nik) get the instruction fee from the MasterAccountController contract, InstructionFeesFacet
-    amount: 1,
-    memos: [{ Memo: { MemoData: collateralReservationInstruction.encode().slice(2) } }],
+    amount: instructionFee,
+    memos: [{ Memo: { MemoData: encodedInstruction } }],
     wallet: xrplWallet,
     client: xrplClient,
   });
@@ -140,10 +146,15 @@ async function transfer({
   xrplWallet: Wallet;
 }) {
   const operatorXrplAddress = await getOperatorXrplAddress();
+
+  const encodedInstruction = transferInstruction.encode().slice(2);
+  const instructionFee = await getInstructionFee(encodedInstruction);
+  console.log("Instruction fee:", instructionFee, "\n");
+
   const transferTransaction = await sendXrplPayment({
     destination: operatorXrplAddress,
-    amount: 1,
-    memos: [{ Memo: { MemoData: transferInstruction.encode().slice(2) } }],
+    amount: instructionFee,
+    memos: [{ Memo: { MemoData: encodedInstruction } }],
     wallet: xrplWallet,
     client: xrplClient,
   });
@@ -224,11 +235,16 @@ async function main() {
   });
   console.log("MintingExecuted event:", mintingExecutedEvent, "\n");
 
-  const transferInstruction = new FXRPTransferInstruction({
+  const decimals = (await getFxrpDecimals()) as number;
+  console.log("Decimals:", decimals, "\n");
+
+  const transferData = {
     walletId: 0,
-    value: 1,
+    value: 10 * 10 ** decimals,
     recipientAddress: recipientAddress.slice(2),
-  });
+  };
+  // TODO:(Nik) Two things: send the whole 10 lots, and get the decimals to multiply with.
+  const transferInstruction = new FXRPTransferInstruction(transferData);
   console.log("Encoded transfer instruction:", transferInstruction.encode(), "\n");
 
   await logBalances(personalAccountAddress, recipientAddress);
