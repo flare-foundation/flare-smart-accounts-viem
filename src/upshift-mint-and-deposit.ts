@@ -4,8 +4,7 @@ import { sendXrplPayment } from "./utils/xrpl";
 import { coston2 } from "@flarenetwork/flare-wagmi-periphery-package";
 import { publicClient } from "./utils/client";
 import type { Address, Log } from "viem";
-import { abi as iMasterAccountControllerAbi } from "./abis/IMasterAccountController";
-import { abi as erc4626Abi } from "./abis/ERC4626";
+import { erc4626Abi } from "viem";
 import {
   getInstructionFee,
   getOperatorXrplAddress,
@@ -149,7 +148,7 @@ async function watchForDepositEvent({
 
   const unwatchCollateralReserved = publicClient.watchContractEvent({
     address: MASTER_ACCOUNT_CONTROLLER_ADDRESS,
-    abi: iMasterAccountControllerAbi,
+    abi: coston2.iMasterAccountControllerAbi,
     eventName: "Deposited",
     onLogs: (logs) => {
       for (const log of logs) {

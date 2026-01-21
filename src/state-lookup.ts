@@ -2,13 +2,13 @@ import { Wallet } from "xrpl";
 import { getAgentVaults, getOperatorXrplAddress, getPersonalAccountAddress, getVaults } from "./utils/smart-accounts";
 import { getFxrpBalance } from "./utils/fassets";
 import { publicClient } from "./utils/client";
-import { abi } from "./abis/ERC4626";
+import { erc4626Abi } from "viem";
 import type { Address } from "viem";
 
 async function getVaultBalance(vaultAddress: Address, accountAddress: Address) {
   const vaultBalance = await publicClient.readContract({
     address: vaultAddress,
-    abi: abi,
+    abi: erc4626Abi,
     functionName: "balanceOf",
     args: [accountAddress],
   });
