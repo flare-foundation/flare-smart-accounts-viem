@@ -60,7 +60,7 @@
     "vitest": "^4.0.15"
   },
   "dependencies": {
-    "@flarenetwork/flare-wagmi-periphery-package": "^1.0.0",
+    "@flarenetwork/flare-wagmi-periphery-package": "^2.1.0",
     "@flarenetwork/smart-accounts-encoder": "^0.0.8",
     "viem": "2.x",
     "xrpl": "^4.5.0"

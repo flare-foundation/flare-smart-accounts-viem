@@ -1,13 +1,28 @@
-import type { Address } from "viem";
-import { abi } from "../abis/FAsset";
+import { type Address, erc20Abi } from "viem";
+import { coston2 } from "@flarenetwork/flare-wagmi-periphery-package";
 import { publicClient } from "./client";
+import { getContractAddressByName } from "./flare-contract-registry";
 
-export const FXRP_ADDRESS = "0x0b6A3645c240605887a5532109323A3E12273dc7";
+export async function getAssetManagerFXRPAddress(): Promise<Address> {
+  const assetManagerAddress = await getContractAddressByName("AssetManagerFXRP");
+  return assetManagerAddress;
+}
+
+export async function getFxrpAddress(): Promise<Address> {
+  const assetManagerAddress = await getAssetManagerFXRPAddress();
+  const fxrpAddress = await publicClient.readContract({
+    address: assetManagerAddress,
+    abi: coston2.iAssetManagerAbi,
+    functionName: "fAsset",
+  });
+  return fxrpAddress;
+}
 
 export async function getFxrpBalance(address: Address) {
+  const fxrpAddress = await getFxrpAddress();
   const fxrpBalance = await publicClient.readContract({
-    address: FXRP_ADDRESS,
-    abi: abi,
+    address: fxrpAddress,
+    abi: erc20Abi,
     functionName: "balanceOf",
     args: [address],
   });
@@ -15,9 +30,10 @@ export async function getFxrpBalance(address: Address) {
 }
 
 export async function getFxrpDecimals() {
+  const fxrpAddress = await getFxrpAddress();
   const decimals = await publicClient.readContract({
-    address: FXRP_ADDRESS,
-    abi: abi,
+    address: fxrpAddress,
+    abi: erc20Abi,
     functionName: "decimals",
     args: [],
   });

@@ -4,7 +4,6 @@ import { sendXrplPayment } from "./utils/xrpl";
 import { coston2 } from "@flarenetwork/flare-wagmi-periphery-package";
 import { publicClient } from "./utils/client";
 import type { Address, Log } from "viem";
-import { abi } from "./abis/IMasterAccountController";
 import {
   getInstructionFee,
   getOperatorXrplAddress,
@@ -165,7 +164,7 @@ async function transfer({
 
   const unwatchFxrpTransferred = publicClient.watchContractEvent({
     address: MASTER_ACCOUNT_CONTROLLER_ADDRESS,
-    abi: abi,
+    abi: coston2.iMasterAccountControllerAbi,
     eventName: "FXrpTransferred",
     onLogs: (logs) => {
       for (const log of logs) {
@@ -235,7 +234,7 @@ async function main() {
   });
   console.log("MintingExecuted event:", mintingExecutedEvent, "\n");
 
-  const decimals = (await getFxrpDecimals()) as number;
+  const decimals = await getFxrpDecimals();
   console.log("Decimals:", decimals, "\n");
 
   const transferData = {
