@@ -1,38 +1,30 @@
-import type { Address, Log } from "viem";
+import type { Log, AbiEvent } from "viem";
+import { coston2 } from "@flarenetwork/flare-wagmi-periphery-package";
 
-type CollateralReservedEventArgsType = {
-  args: {
-    agentVault: Address;
-    minter: Address;
-    collateralReservationId: bigint;
-    valueUBA: bigint;
-    feeUBA: bigint;
-    firstUnderlyingBlock: bigint;
-    lastUnderlyingBlock: bigint;
-    lastUnderlyingTimestamp: bigint;
-    paymentAddress: string;
-    paymentReference: string;
-    executor: Address;
-    executorFeeNatWei: bigint;
-  };
-};
-export type CollateralReservedEventType = Log & CollateralReservedEventArgsType;
+// Helper type to extract event from ABI and create Log type
+type EventLogType<
+  TAbi extends readonly unknown[],
+  TEventName extends string
+> = Log<
+  bigint,
+  number,
+  false,
+  Extract<TAbi[number], { type: "event"; name: TEventName }> & AbiEvent,
+  true
+>;
 
-type FxrpTransferredEventArgsType = {
-  args: {
-    personalAccount: Address;
-    to: Address;
-    amount: bigint;
-  };
-};
-export type FxrpTransferredEventType = Log & FxrpTransferredEventArgsType;
+// Event log types derived from ABI
+export type CollateralReservedEventType = EventLogType<
+  typeof coston2.iAssetManagerAbi,
+  "CollateralReserved"
+>;
 
-type DepositedEventArgsType = {
-  args: {
-    personalAccount: Address;
-    vault: Address;
-    amount: bigint;
-    shares: bigint;
-  };
-};
-export type DepositedEventType = Log & DepositedEventArgsType;
+export type FxrpTransferredEventType = EventLogType<
+  typeof coston2.iMasterAccountControllerAbi,
+  "FXrpTransferred"
+>;
+
+export type DepositedEventType = EventLogType<
+  typeof coston2.iMasterAccountControllerAbi,
+  "Deposited"
+>;
