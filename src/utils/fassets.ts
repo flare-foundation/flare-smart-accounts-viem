@@ -3,13 +3,13 @@ import { coston2 } from "@flarenetwork/flare-wagmi-periphery-package";
 import { publicClient } from "./client";
 import { getContractAddressByName } from "./flare-contract-registry";
 
-export async function getAssetManagerAddress(): Promise<Address> {
+export async function getAssetManagerFXRPAddress(): Promise<Address> {
   const assetManagerAddress = await getContractAddressByName("AssetManagerFXRP");
   return assetManagerAddress;
 }
 
 export async function getFxrpAddress(): Promise<Address> {
-  const assetManagerAddress = await getAssetManagerAddress();
+  const assetManagerAddress = await getAssetManagerFXRPAddress();
   const fxrpAddress = await publicClient.readContract({
     address: assetManagerAddress,
     abi: coston2.iAssetManagerAbi,
