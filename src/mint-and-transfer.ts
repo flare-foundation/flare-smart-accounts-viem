@@ -6,7 +6,7 @@ import { publicClient } from "./utils/client";
 import type { Address, Log } from "viem";
 import {
   getInstructionFee,
-  getOperatorXrplAddress,
+  getOperatorXrplAddresses,
   getPersonalAccountAddress,
   MASTER_ACCOUNT_CONTROLLER_ADDRESS,
 } from "./utils/smart-accounts";
@@ -27,7 +27,7 @@ async function reserveCollateral({
   xrplClient: Client;
   xrplWallet: Wallet;
 }) {
-  const operatorXrplAddress = await getOperatorXrplAddress();
+  const operatorXrplAddress = (await getOperatorXrplAddresses())[0] as string;
 
   const encodedInstruction = collateralReservationInstruction.encode().slice(2);
   const instructionFee = await getInstructionFee(encodedInstruction);
@@ -35,7 +35,6 @@ async function reserveCollateral({
 
   const collateralReservationTransaction = await sendXrplPayment({
     destination: operatorXrplAddress,
-    // TODO:(Nik) get the instruction fee from the MasterAccountController contract, InstructionFeesFacet
     amount: instructionFee,
     memos: [{ Memo: { MemoData: encodedInstruction } }],
     wallet: xrplWallet,
@@ -144,7 +143,7 @@ async function transfer({
   xrplClient: Client;
   xrplWallet: Wallet;
 }) {
-  const operatorXrplAddress = await getOperatorXrplAddress();
+  const operatorXrplAddress = (await getOperatorXrplAddresses())[0] as string;
 
   const encodedInstruction = transferInstruction.encode().slice(2);
   const instructionFee = await getInstructionFee(encodedInstruction);
@@ -242,9 +241,8 @@ async function main() {
     value: 10 * 10 ** decimals,
     recipientAddress: recipientAddress.slice(2),
   };
-  // TODO:(Nik) Two things: send the whole 10 lots, and get the decimals to multiply with.
   const transferInstruction = new FXRPTransferInstruction(transferData);
-  console.log("Encoded transfer instruction:", transferInstruction.encode(), "\n");
+  console.log("Encoded transfer instruction:", transferInstruction.encode().slice(2), "\n");
 
   await logBalances(personalAccountAddress, recipientAddress);
 

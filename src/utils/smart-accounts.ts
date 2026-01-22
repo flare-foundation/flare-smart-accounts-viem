@@ -5,17 +5,14 @@ import { dropsToXrp } from "xrpl";
 
 export const MASTER_ACCOUNT_CONTROLLER_ADDRESS = "0x3ab31E2d943d1E8F47B275605E50Ff107f2F8393";
 
-export async function getOperatorXrplAddress() {
+export async function getOperatorXrplAddresses() {
   const result = await publicClient.readContract({
     address: MASTER_ACCOUNT_CONTROLLER_ADDRESS,
     abi: coston2.iMasterAccountControllerAbi,
     functionName: "getXrplProviderWallets",
     args: [],
   });
-  const operatorXrplAddress = result as string[];
-
-  // WARN:(Nik) Here we assume that there is only one provider wallet available.
-  return operatorXrplAddress[0] as string;
+  return result as string[];
 }
 
 export async function getPersonalAccountAddress(xrplAddress: string) {
@@ -71,12 +68,12 @@ export type AgentVault = {
 export type GetAgentVaultsReturnType = [bigint[], string[]];
 
 export async function getAgentVaults(): Promise<AgentVault[]> {
-  const _vaults = (await publicClient.readContract({
+  const _vaults = await publicClient.readContract({
     address: MASTER_ACCOUNT_CONTROLLER_ADDRESS,
     abi: coston2.iMasterAccountControllerAbi,
     functionName: "getAgentVaults",
     args: [],
-  }));
+  });
 
   const length = _vaults[0].length;
   if (length === 0) {

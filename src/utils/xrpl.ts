@@ -10,7 +10,6 @@ export type SendXrplPaymentInputType = {
 };
 
 export async function sendXrplPayment({ destination, memos, amount, wallet, client }: SendXrplPaymentInputType) {
-  // TODO:(Nik) Should connect and disconnect in- or outside of the function?
   await client.connect();
 
   const preparedTransaction = await client.autofill({

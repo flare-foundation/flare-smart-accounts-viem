@@ -7,7 +7,7 @@ import type { Address, Log } from "viem";
 import { erc4626Abi } from "viem";
 import {
   getInstructionFee,
-  getOperatorXrplAddress,
+  getOperatorXrplAddresses,
   getPersonalAccountAddress,
   getVaults,
   MASTER_ACCOUNT_CONTROLLER_ADDRESS,
@@ -28,7 +28,7 @@ async function sendInstruction({
   xrplClient: Client;
   xrplWallet: Wallet;
 }) {
-  const operatorXrplAddress = await getOperatorXrplAddress();
+  const operatorXrplAddress = (await getOperatorXrplAddresses())[0] as string;
 
   const encodedInstruction = collateralReservationAndDepositInstruction.encode().slice(2);
   const instructionFee = await getInstructionFee(encodedInstruction);
@@ -36,7 +36,6 @@ async function sendInstruction({
 
   const instructionTransaction = await sendXrplPayment({
     destination: operatorXrplAddress,
-    // TODO:(Nik) get the instruction fee from the MasterAccountController contract, InstructionFeesFacet
     amount: instructionFee,
     memos: [{ Memo: { MemoData: encodedInstruction } }],
     wallet: xrplWallet,
