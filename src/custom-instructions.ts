@@ -1,4 +1,4 @@
-import { encodeFunctionData, type Address, type Log } from "viem";
+import { encodeFunctionData, toHex, type Address, type Log } from "viem";
 import { abi as checkpointAbi } from "./abis/Checkpoint";
 import { abi as piggyBankAbi } from "./abis/PiggyBank";
 import { abi as noticeBoardAbi } from "./abis/NoticeBoard";
@@ -15,8 +15,9 @@ import { publicClient } from "./utils/client";
 import { sendXrplPayment } from "./utils/xrpl";
 import { Client, Wallet } from "xrpl";
 
-export function encodeCustomInstruction(instructionHash: `0x${string}`) {
-  return ("0xff" + instructionHash.slice(2)) as `0x${string}`;
+export function encodeCustomInstruction(instructionHash: `0x${string}`, walletId: number) {
+  // NOTE:(Nik) We cut off the `0x` prefix and the first 2 bytes to get the length down to 30 bytes
+  return ("0xff" + toHex(walletId, { size: 1 }).slice(2) + instructionHash.slice(6)) as `0x${string}`;
 }
 
 // TODO:(Nik) Import from library, when the library has been updated
@@ -42,20 +43,20 @@ async function sendCustomInstruction({
 }) {
   const operatorXrplAddress = (await getOperatorXrplAddresses())[0] as string;
 
-  const instructionFee = await getInstructionFee(encodedInstruction.slice(2));
+  const instructionFee = await getInstructionFee(encodedInstruction);
   console.log("Instruction fee:", instructionFee, "\n");
 
-  const collateralReservationTransaction = await sendXrplPayment({
+  const customInstructionTransaction = await sendXrplPayment({
     destination: operatorXrplAddress,
     amount: instructionFee,
     memos: [{ Memo: { MemoData: encodedInstruction.slice(2) } }],
     wallet: xrplWallet,
     client: xrplClient,
   });
-  console.log("collateral reservation transaction hash:", collateralReservationTransaction.result.hash, "\n");
+  console.log("custom instruction transaction hash:", customInstructionTransaction.result.hash, "\n");
 
   let customInstructionExecutedEvent: CustomInstructionExecutedEventType | undefined;
-  let collateralReservationEventFound = false;
+  let customInstructionExecutedEventFound = false;
 
   const unwatchCustomInstructionExecuted = publicClient.watchContractEvent({
     address: MASTER_ACCOUNT_CONTROLLER_ADDRESS,
@@ -65,19 +66,19 @@ async function sendCustomInstruction({
       for (const log of logs) {
         customInstructionExecutedEvent = log as CustomInstructionExecutedEventType;
         if (
-          customInstructionExecutedEvent.args.callHash !== encodedInstruction ||
-          customInstructionExecutedEvent.args.personalAccount !== personalAccountAddress
+          customInstructionExecutedEvent.args.callHash.slice(6) !== encodedInstruction.slice(6) ||
+          customInstructionExecutedEvent.args.personalAccount.toLowerCase() !== personalAccountAddress.toLowerCase()
         ) {
           continue;
         }
-        collateralReservationEventFound = true;
+        customInstructionExecutedEventFound = true;
         break;
       }
     },
   });
 
   console.log("Waiting for CustomInstructionExecuted event...");
-  while (!collateralReservationEventFound) {
+  while (!customInstructionExecutedEventFound) {
     await new Promise((resolve) => setTimeout(resolve, 10000));
   }
   unwatchCustomInstructionExecuted();
@@ -87,6 +88,8 @@ async function sendCustomInstruction({
 
 // NOTE:(Nik) For this example to work, you first need to faucet C2FLR to your personal account address.
 async function main() {
+  const walletId = 0;
+
   const checkpointAddress = "0xEE6D54382aA623f4D16e856193f5f8384E487002";
   const piggyBankAddress = "0x42Ccd4F0aB1C6Fa36BfA37C9e30c4DC4DD94dE42";
   const noticeBoardAddress = "0x59D57652BF4F6d97a6e555800b3920Bd775661Dc";
@@ -133,7 +136,7 @@ async function main() {
   console.log("Personal account address:", personalAccountAddress, "\n");
 
   const customInstructionHash = await registerCustomInstruction(customInstructions);
-  const encodedInstruction = encodeCustomInstruction(customInstructionHash);
+  const encodedInstruction = encodeCustomInstruction(customInstructionHash, walletId);
   console.log("Encoded instructions:", encodedInstruction, "\n");
 
   const customInstructionExecutedEvent = await sendCustomInstruction({

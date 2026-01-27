@@ -1,10 +1,11 @@
-import { ContractFunctionExecutionError, type Address } from "viem";
+import { ContractFunctionExecutionError, fromHex, type Address } from "viem";
 import { coston2 } from "@flarenetwork/flare-wagmi-periphery-package";
 import { account, publicClient, walletClient } from "./client";
 import { dropsToXrp } from "xrpl";
 import { abi } from "../abis/CustomInstructionsFacet";
 
-export const MASTER_ACCOUNT_CONTROLLER_ADDRESS = "0x434936d47503353f06750Db1A444DBDC5F0AD37c";
+// export const MASTER_ACCOUNT_CONTROLLER_ADDRESS = "0x434936d47503353f06750Db1A444DBDC5F0AD37c";
+export const MASTER_ACCOUNT_CONTROLLER_ADDRESS = "0x32F662C63c1E24bB59B908249962F00B61C6638f";
 
 export async function getOperatorXrplAddresses() {
   const result = await publicClient.readContract({
