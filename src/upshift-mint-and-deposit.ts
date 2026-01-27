@@ -30,14 +30,14 @@ async function sendInstruction({
 }) {
   const operatorXrplAddress = (await getOperatorXrplAddresses())[0] as string;
 
-  const encodedInstruction = collateralReservationAndDepositInstruction.encode().slice(2);
+  const encodedInstruction = collateralReservationAndDepositInstruction.encode();
   const instructionFee = await getInstructionFee(encodedInstruction);
   console.log("Instruction fee:", instructionFee, "\n");
 
   const instructionTransaction = await sendXrplPayment({
     destination: operatorXrplAddress,
     amount: instructionFee,
-    memos: [{ Memo: { MemoData: encodedInstruction } }],
+    memos: [{ Memo: { MemoData: encodedInstruction.slice(2) } }],
     wallet: xrplWallet,
     client: xrplClient,
   });

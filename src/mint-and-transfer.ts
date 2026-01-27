@@ -29,14 +29,14 @@ async function reserveCollateral({
 }) {
   const operatorXrplAddress = (await getOperatorXrplAddresses())[0] as string;
 
-  const encodedInstruction = collateralReservationInstruction.encode().slice(2);
+  const encodedInstruction = collateralReservationInstruction.encode();
   const instructionFee = await getInstructionFee(encodedInstruction);
   console.log("Instruction fee:", instructionFee, "\n");
 
   const collateralReservationTransaction = await sendXrplPayment({
     destination: operatorXrplAddress,
     amount: instructionFee,
-    memos: [{ Memo: { MemoData: encodedInstruction } }],
+    memos: [{ Memo: { MemoData: encodedInstruction.slice(2) } }],
     wallet: xrplWallet,
     client: xrplClient,
   });
@@ -145,14 +145,14 @@ async function transfer({
 }) {
   const operatorXrplAddress = (await getOperatorXrplAddresses())[0] as string;
 
-  const encodedInstruction = transferInstruction.encode().slice(2);
+  const encodedInstruction = transferInstruction.encode();
   const instructionFee = await getInstructionFee(encodedInstruction);
   console.log("Instruction fee:", instructionFee, "\n");
 
   const transferTransaction = await sendXrplPayment({
     destination: operatorXrplAddress,
     amount: instructionFee,
-    memos: [{ Memo: { MemoData: encodedInstruction } }],
+    memos: [{ Memo: { MemoData: encodedInstruction.slice(2) } }],
     wallet: xrplWallet,
     client: xrplClient,
   });

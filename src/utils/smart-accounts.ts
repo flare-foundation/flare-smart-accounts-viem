@@ -94,11 +94,16 @@ export async function getAgentVaults(): Promise<AgentVault[]> {
 }
 
 export async function getInstructionFee(encodedInstruction: string) {
+  const instructionId = encodedInstruction.slice(0, 4);
+  const instructionIdDecimal = fromHex(instructionId as `0x${string}`, "bigint");
+
+  console.log("instructionIdDecimal:", instructionIdDecimal, "\n");
+
   const requestFee = await publicClient.readContract({
     address: MASTER_ACCOUNT_CONTROLLER_ADDRESS,
     abi: coston2.iMasterAccountControllerAbi,
     functionName: "getInstructionFee",
-    args: [BigInt(encodedInstruction.slice(0, 2))],
+    args: [instructionIdDecimal],
   });
   return dropsToXrp(Number(requestFee));
 }
