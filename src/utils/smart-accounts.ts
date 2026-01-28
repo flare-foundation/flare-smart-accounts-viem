@@ -1,9 +1,11 @@
-import type { Address } from "viem";
+import { ContractFunctionExecutionError, fromHex, type Address } from "viem";
 import { coston2 } from "@flarenetwork/flare-wagmi-periphery-package";
-import { publicClient } from "./client";
+import { account, publicClient, walletClient } from "./client";
 import { dropsToXrp } from "xrpl";
+import { abi } from "../abis/CustomInstructionsFacet";
 
-export const MASTER_ACCOUNT_CONTROLLER_ADDRESS = "0x3ab31E2d943d1E8F47B275605E50Ff107f2F8393";
+// export const MASTER_ACCOUNT_CONTROLLER_ADDRESS = "0x434936d47503353f06750Db1A444DBDC5F0AD37c";
+export const MASTER_ACCOUNT_CONTROLLER_ADDRESS = "0x32F662C63c1E24bB59B908249962F00B61C6638f";
 
 export async function getOperatorXrplAddresses() {
   const result = await publicClient.readContract({
@@ -93,11 +95,59 @@ export async function getAgentVaults(): Promise<AgentVault[]> {
 }
 
 export async function getInstructionFee(encodedInstruction: string) {
+  const instructionId = encodedInstruction.slice(0, 4);
+  const instructionIdDecimal = fromHex(instructionId as `0x${string}`, "bigint");
+
+  console.log("instructionIdDecimal:", instructionIdDecimal, "\n");
+
   const requestFee = await publicClient.readContract({
     address: MASTER_ACCOUNT_CONTROLLER_ADDRESS,
     abi: coston2.iMasterAccountControllerAbi,
     functionName: "getInstructionFee",
-    args: [BigInt(encodedInstruction.slice(0, 2))],
+    args: [instructionIdDecimal],
   });
   return dropsToXrp(Number(requestFee));
+}
+
+export type CustomInstruction = {
+  targetContract: Address;
+  value: bigint;
+  data: `0x${string}`;
+};
+
+export async function registerCustomInstruction(instructions: CustomInstruction[]): Promise<`0x${string}`> {
+  try {
+    const encodeCustomInstructionResult = (await publicClient.readContract({
+      address: MASTER_ACCOUNT_CONTROLLER_ADDRESS,
+      abi: abi,
+      functionName: "encodeCustomInstruction",
+      args: [instructions],
+    })) as `0x${string}`;
+    console.log("result:", encodeCustomInstructionResult, "\n");
+
+    await publicClient.readContract({
+      address: MASTER_ACCOUNT_CONTROLLER_ADDRESS,
+      abi: abi,
+      functionName: "getCustomInstruction",
+      args: [encodeCustomInstructionResult],
+    });
+
+    return encodeCustomInstructionResult;
+  } catch (error) {
+    console.log((error as ContractFunctionExecutionError).message);
+  }
+
+  const { request } = await publicClient.simulateContract({
+    account: account,
+    address: MASTER_ACCOUNT_CONTROLLER_ADDRESS,
+    abi: abi,
+    functionName: "registerCustomInstruction",
+    args: [instructions],
+  });
+  console.log("request:", request, "\n");
+
+  const registerCustomInstructionResult = await walletClient.writeContract(request);
+  console.log("registerCustomInstructionResult:", registerCustomInstructionResult, "\n");
+
+  return registerCustomInstructionResult;
 }
