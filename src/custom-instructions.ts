@@ -1,4 +1,4 @@
-import { encodeFunctionData, toHex, type Address, type Log } from "viem";
+import { encodeFunctionData, toHex } from "viem";
 import { abi as checkpointAbi } from "./abis/Checkpoint";
 import { abi as piggyBankAbi } from "./abis/PiggyBank";
 import { abi as noticeBoardAbi } from "./abis/NoticeBoard";
@@ -14,30 +14,26 @@ import {
 import { publicClient } from "./utils/client";
 import { sendXrplPayment } from "./utils/xrpl";
 import { Client, Wallet } from "xrpl";
+import type { CustomInstructionExecutedEventType } from "./utils/event-types";
+import { abi } from "./abis/CustomInstructionsFacet";
 
-export function encodeCustomInstruction(instructionHash: `0x${string}`, walletId: number) {
+async function encodeCustomInstruction(instructions: CustomInstruction[], walletId: number) {
+  const encodedInstruction = (await publicClient.readContract({
+    address: MASTER_ACCOUNT_CONTROLLER_ADDRESS,
+    abi: abi,
+    functionName: "encodeCustomInstruction",
+    args: [instructions],
+  })) as `0x${string}`;
   // NOTE:(Nik) We cut off the `0x` prefix and the first 2 bytes to get the length down to 30 bytes
-  return ("0xff" + toHex(walletId, { size: 1 }).slice(2) + instructionHash.slice(6)) as `0x${string}`;
+  return ("0xff" + toHex(walletId, { size: 1 }).slice(2) + encodedInstruction.slice(6)) as `0x${string}`;
 }
-
-// TODO:(Nik) Import from library, when the library has been updated
-type CustomInstructionExecutedArgsType = {
-  args: {
-    personalAccount: Address;
-    callHash: `0x${string}`;
-    customInstruction: Array<CustomInstruction>;
-  };
-};
-type CustomInstructionExecutedEventType = Log & CustomInstructionExecutedArgsType;
 
 async function sendCustomInstruction({
   encodedInstruction,
-  personalAccountAddress,
   xrplClient,
   xrplWallet,
 }: {
   encodedInstruction: `0x${string}`;
-  personalAccountAddress: string;
   xrplClient: Client;
   xrplWallet: Wallet;
 }) {
@@ -53,8 +49,17 @@ async function sendCustomInstruction({
     wallet: xrplWallet,
     client: xrplClient,
   });
-  console.log("custom instruction transaction hash:", customInstructionTransaction.result.hash, "\n");
 
+  return customInstructionTransaction;
+}
+
+async function waitForCustomInstructionExecutedEvent({
+  encodedInstruction,
+  personalAccountAddress,
+}: {
+  encodedInstruction: `0x${string}`;
+  personalAccountAddress: string;
+}) {
   let customInstructionExecutedEvent: CustomInstructionExecutedEventType | undefined;
   let customInstructionExecutedEventFound = false;
 
@@ -135,15 +140,21 @@ async function main() {
   const personalAccountAddress = await getPersonalAccountAddress(xrplWallet.address);
   console.log("Personal account address:", personalAccountAddress, "\n");
 
-  const customInstructionHash = await registerCustomInstruction(customInstructions);
-  const encodedInstruction = encodeCustomInstruction(customInstructionHash, walletId);
+  const customInstructionCallHash = await registerCustomInstruction(customInstructions);
+  console.log("Custom instruction call hash:", customInstructionCallHash, "\n");
+  const encodedInstruction = await encodeCustomInstruction(customInstructions, walletId);
   console.log("Encoded instructions:", encodedInstruction, "\n");
 
-  const customInstructionExecutedEvent = await sendCustomInstruction({
+  const customInstructionTransaction = await sendCustomInstruction({
     encodedInstruction,
-    personalAccountAddress,
     xrplClient,
     xrplWallet,
+  });
+  console.log("Custom instruction transaction hash:", customInstructionTransaction.result.hash, "\n");
+
+  const customInstructionExecutedEvent = await waitForCustomInstructionExecutedEvent({
+    encodedInstruction,
+    personalAccountAddress,
   });
   console.log("CustomInstructionExecuted event:", customInstructionExecutedEvent, "\n");
 }

@@ -1,11 +1,9 @@
-import type { Log, AbiEvent } from "viem";
+import type { Log, AbiEvent, Address } from "viem";
 import { coston2 } from "@flarenetwork/flare-wagmi-periphery-package";
+import type { CustomInstruction } from "./smart-accounts";
 
 // Helper type to extract event from ABI and create Log type
-type EventLogType<
-  TAbi extends readonly unknown[],
-  TEventName extends string
-> = Log<
+type EventLogType<TAbi extends readonly unknown[], TEventName extends string> = Log<
   bigint,
   number,
   false,
@@ -14,17 +12,18 @@ type EventLogType<
 >;
 
 // Event log types derived from ABI
-export type CollateralReservedEventType = EventLogType<
-  typeof coston2.iAssetManagerAbi,
-  "CollateralReserved"
->;
+export type CollateralReservedEventType = EventLogType<typeof coston2.iAssetManagerAbi, "CollateralReserved">;
 
-export type FxrpTransferredEventType = EventLogType<
-  typeof coston2.iMasterAccountControllerAbi,
-  "FXrpTransferred"
->;
+export type FxrpTransferredEventType = EventLogType<typeof coston2.iMasterAccountControllerAbi, "FXrpTransferred">;
 
-export type DepositedEventType = EventLogType<
-  typeof coston2.iMasterAccountControllerAbi,
-  "Deposited"
->;
+export type DepositedEventType = EventLogType<typeof coston2.iMasterAccountControllerAbi, "Deposited">;
+
+// TODO:(Nik) Import from library, when the library has been updated
+type CustomInstructionExecutedArgsType = {
+  args: {
+    personalAccount: Address;
+    callHash: `0x${string}`;
+    customInstruction: Array<CustomInstruction>;
+  };
+};
+export type CustomInstructionExecutedEventType = Log & CustomInstructionExecutedArgsType;
