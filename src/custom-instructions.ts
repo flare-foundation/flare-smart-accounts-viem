@@ -2,7 +2,6 @@ import { encodeFunctionData, toHex } from "viem";
 import { abi as checkpointAbi } from "./abis/Checkpoint";
 import { abi as piggyBankAbi } from "./abis/PiggyBank";
 import { abi as noticeBoardAbi } from "./abis/NoticeBoard";
-import { abi as iInstructionsFacetAbi } from "./abis/IInstructionsFacet";
 import {
   getInstructionFee,
   getOperatorXrplAddresses,
@@ -15,15 +14,15 @@ import { publicClient } from "./utils/client";
 import { sendXrplPayment } from "./utils/xrpl";
 import { Client, Wallet } from "xrpl";
 import type { CustomInstructionExecutedEventType } from "./utils/event-types";
-import { abi } from "./abis/CustomInstructionsFacet";
+import { coston2 } from "@flarenetwork/flare-wagmi-periphery-package";
 
 async function encodeCustomInstruction(instructions: CustomInstruction[], walletId: number) {
-  const encodedInstruction = (await publicClient.readContract({
+  const encodedInstruction = await publicClient.readContract({
     address: MASTER_ACCOUNT_CONTROLLER_ADDRESS,
-    abi: abi,
+    abi: coston2.iMasterAccountControllerAbi,
     functionName: "encodeCustomInstruction",
     args: [instructions],
-  })) as `0x${string}`;
+  });
   // NOTE:(Nik) We cut off the `0x` prefix and the first 2 bytes to get the length down to 30 bytes
   return ("0xff" + toHex(walletId, { size: 1 }).slice(2) + encodedInstruction.slice(6)) as `0x${string}`;
 }
@@ -65,7 +64,7 @@ async function waitForCustomInstructionExecutedEvent({
 
   const unwatchCustomInstructionExecuted = publicClient.watchContractEvent({
     address: MASTER_ACCOUNT_CONTROLLER_ADDRESS,
-    abi: iInstructionsFacetAbi,
+    abi: coston2.iMasterAccountControllerAbi,
     eventName: "CustomInstructionExecuted",
     onLogs: (logs) => {
       for (const log of logs) {

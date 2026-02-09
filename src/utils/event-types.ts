@@ -23,7 +23,7 @@ type CustomInstructionExecutedArgsType = {
   args: {
     personalAccount: Address;
     callHash: `0x${string}`;
-    customInstruction: Array<CustomInstruction>;
+    customInstruction: readonly CustomInstruction[];
   };
 };
 export type CustomInstructionExecutedEventType = Log & CustomInstructionExecutedArgsType;

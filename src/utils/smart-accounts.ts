@@ -2,7 +2,6 @@ import { fromHex, type Address } from "viem";
 import { coston2 } from "@flarenetwork/flare-wagmi-periphery-package";
 import { account, publicClient, walletClient } from "./client";
 import { dropsToXrp } from "xrpl";
-import { abi } from "../abis/CustomInstructionsFacet";
 
 export const MASTER_ACCOUNT_CONTROLLER_ADDRESS = "0x434936d47503353f06750Db1A444DBDC5F0AD37c";
 
@@ -118,7 +117,7 @@ export async function registerCustomInstruction(instructions: CustomInstruction[
   const { request } = await publicClient.simulateContract({
     account: account,
     address: MASTER_ACCOUNT_CONTROLLER_ADDRESS,
-    abi: abi,
+    abi: coston2.iMasterAccountControllerAbi,
     functionName: "registerCustomInstruction",
     args: [instructions],
   });
