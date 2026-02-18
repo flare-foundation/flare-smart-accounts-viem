@@ -4,11 +4,18 @@ import { Client, Wallet } from "xrpl";
 import { MPT_ISSUANCE_ID } from "./config";
 import { abi } from "../abis/CustomInstructionsFacet";
 import { abi as BridgeAbi } from "../abis/DummyBridge";
-import { abi as LendingAbi } from "../abis/DummyLending";
+import { abi as LendingAbi } from "../abis/DummyCertifiedLending";
 import { abi as ERC20Abi } from "../abis/ERC20";
 import { abi as iInstructionsFacetAbi } from "../abis/IInstructionsFacet";
-import { publicClient } from "../utils/client";
+import { publicClient, walletClient } from "../utils/client";
+import { account } from "../utils/client";
 import type { CustomInstructionExecutedEventType } from "../utils/event-types";
+import {
+  prepareAttestationRequest,
+  retrieveDataAndProofWithRetry,
+  submitAttestationRequest,
+  type Web2JsonProof,
+} from "../utils/fdc";
 import {
   getInstructionFee,
   getOperatorXrplAddresses,
@@ -28,6 +35,113 @@ async function encodeCustomInstruction(instructions: CustomInstruction[], wallet
   })) as `0x${string}`;
   // NOTE:(Nik) We cut off the `0x` prefix and the first 2 bytes to get the length down to 30 bytes
   return ("0xff" + toHex(walletId, { size: 1 }).slice(2) + encodedInstruction.slice(6)) as `0x${string}`;
+}
+
+async function getCertificateFdcProof(xrplWallet: Wallet, dummyLendingAddress: `0x${string}`): Promise<Web2JsonProof> {
+  const subjectXrplAddress = xrplWallet.address;
+  const xrplJsonRpcUrl = "https://testnet.xrpl-labs.com/";
+
+  const [expectedCredentialType, expectedIssuer] = (await Promise.all([
+    publicClient.readContract({
+      address: dummyLendingAddress,
+      abi: LendingAbi,
+      functionName: "CREDENTIAL_TYPE",
+      args: [],
+    }),
+    publicClient.readContract({
+      address: dummyLendingAddress,
+      abi: LendingAbi,
+      functionName: "CREDENTIAL_ISSUER",
+      args: [],
+    }),
+  ])) as [string, string];
+  const escapeForJq = (s: string) => s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  // Verifier disallows jq's error(); use empty when no match so the filter is accepted (encoding will then fail).
+  const postProcessJq = `.result | . as $res | ($res | .account_objects[]? | select(.CredentialType == "${escapeForJq(expectedCredentialType)}" and .Issuer == "${escapeForJq(expectedIssuer)}")) as $obj | if $obj then {account: $res.account, credentialType: $obj.CredentialType, issuer: $obj.Issuer} else {account: $res.account, credentialType: "", issuer: ""} end`;
+
+  const attestationType = "Web2Json";
+  const sourceId = "PublicWeb2";
+  // ABI signature must match the struct used to decode the jq output (DataTransportObject).
+  // Derived from DummyCertifiedLending.abiSignatureHack(DataTransportObject) so it stays in sync.
+  const abiSignatureHack = LendingAbi.find((f) => f.type === "function" && f.name === "abiSignatureHack");
+  const dtoInput = (abiSignatureHack && "inputs" in abiSignatureHack && abiSignatureHack.inputs?.[0]) ?? null;
+  if (!dtoInput || typeof dtoInput !== "object") {
+    throw new Error("DummyCertifiedLending ABI missing abiSignatureHack(DataTransportObject) input type");
+  }
+  const abiSignature = JSON.stringify(dtoInput);
+  const fdcCredentialCheckRequestBody = {
+    url: xrplJsonRpcUrl,
+    httpMethod: "POST" as const,
+    headers: JSON.stringify({ "Content-Type": "application/json" }),
+    queryParams: JSON.stringify({}),
+    body: JSON.stringify({
+      method: "account_objects",
+      params: [
+        {
+          account: subjectXrplAddress,
+          type: "credential",
+          ledger_index: "validated",
+        },
+      ],
+    }),
+    postProcessJq,
+    abiSignature,
+  };
+
+  const verifierBaseUrl = process.env.VERIFIER_URL_TESTNET!;
+  const apiKey = process.env.VERIFIER_API_KEY_TESTNET;
+
+  const verifierUrl = `${verifierBaseUrl.replace(/\/$/, "")}/verifier/web2/Web2Json/prepareRequest`;
+  if (!verifierUrl || !apiKey) {
+    throw new Error(
+      "FDC verifier config missing: set VERIFIER_URL_TESTNET (or WEB2JSON_VERIFIER_URL_TESTNET) and VERIFIER_API_KEY_TESTNET"
+    );
+  }
+
+  const { abiEncodedRequest } = await prepareAttestationRequest(
+    verifierUrl,
+    apiKey,
+    attestationType,
+    sourceId,
+    fdcCredentialCheckRequestBody as Record<string, unknown>
+  );
+  console.log("Abi encoded request:", abiEncodedRequest, "\n");
+
+  const roundId = await submitAttestationRequest(abiEncodedRequest as `0x${string}`);
+
+  const web2JsonProof = await retrieveDataAndProofWithRetry(abiEncodedRequest, roundId);
+  console.log("Web2Json proof:", web2JsonProof, "\n");
+
+  return web2JsonProof;
+}
+
+/**
+ * Ensures the XRPL user is validated on DummyLending. If validUser(personalAccount) is false,
+ * fetches the certificate FDC proof and calls validateUser(proof) on the DummyLending contract.
+ */
+async function validateUser(xrplWallet: Wallet, dummyLendingAddress: `0x${string}`): Promise<void> {
+  const personalAccountAddress = await getPersonalAccountAddress(xrplWallet.address);
+  const isAlreadyValid = await publicClient.readContract({
+    address: dummyLendingAddress,
+    abi: LendingAbi,
+    functionName: "validUser",
+    args: [personalAccountAddress],
+  });
+  if (isAlreadyValid) {
+    console.log("User already validated on DummyLending, skipping validateUser tx.\n");
+    return;
+  }
+  console.log("Validating user on DummyLending...");
+  const certificateFdcProof = await getCertificateFdcProof(xrplWallet, dummyLendingAddress);
+  const hash = await walletClient.writeContract({
+    account,
+    address: dummyLendingAddress,
+    abi: LendingAbi,
+    functionName: "validateUser",
+    args: [certificateFdcProof],
+  });
+  console.log("validateUser transaction hash:", hash, "\n");
+  await publicClient.waitForTransactionReceipt({ hash });
 }
 
 async function sendCustomInstruction({
@@ -136,7 +250,7 @@ async function findLatestInitiateBridgeEventInLast30Blocks({
 }
 
 /**
- * Transfers the InitiateBridge event amount of MPT on XRPL from the VAULT_SEED account
+ * Transfers the InitiateBridge event amount of MPT on XRPL from the vault wallet
  * to the XRPL address in the event's `to` field.
  * The event amount is multiplied by 10^assetScale for the MPT value.
  * The recipient (recipientXrplWallet) is authorized to receive the MPT (MPTokenAuthorize)
@@ -237,14 +351,16 @@ async function main() {
 
   const walletId = 0;
 
-  const loanContractAddress = "0xa5B3E70376B6CdbBfD33bd2af656f3Fada8f017f";
-  const dummyUSDTAddress = "0x8A6a67b3edf7A876E107090485681ec71cAdf3bA";
-  const bridgeAddress = "0x620864B25471EFEbBd27bFc3239AEB1888fc35b9";
+  const dummyERC20Address = "0x4b441981AB1B20194d51EdE2B11c022C46f3F86A";
+  const dummyLendingAddress = "0xfE2dd3051781E0bBC62318752e97399b05e736b6" as `0x${string}`;
+  const dummyBridgeAddress = "0x9eCCC14a0088578365C9F833E130DEE857F97B8D";
 
   const FXRPAddress = "0x0b6A3645c240605887a5532109323A3E12273dc7";
 
   const amountToDeposit = 100; // In wei
   const amountToBorrow = 10; // In wei
+
+  await validateUser(xrplWallet, dummyLendingAddress);
 
   // NOTE:(Filip) Allow + call deposit + take Loan + approve bridge + withdraw from bridge
   const allowInstructionFXRP = {
@@ -253,12 +369,12 @@ async function main() {
     data: encodeFunctionData({
       abi: ERC20Abi,
       functionName: "approve",
-      args: [loanContractAddress, amountToDeposit],
+      args: [dummyLendingAddress, amountToDeposit],
     }),
   };
 
   const depositCollateral = {
-    targetContract: loanContractAddress,
+    targetContract: dummyLendingAddress,
     value: BigInt(0),
     data: encodeFunctionData({
       abi: LendingAbi,
@@ -268,7 +384,7 @@ async function main() {
   };
 
   const takeLoanInstruction = {
-    targetContract: loanContractAddress,
+    targetContract: dummyLendingAddress,
     value: BigInt(0),
     data: encodeFunctionData({
       abi: LendingAbi,
@@ -278,17 +394,17 @@ async function main() {
   };
 
   const allowInstructionUSDT = {
-    targetContract: dummyUSDTAddress,
+    targetContract: dummyERC20Address,
     value: BigInt(0),
     data: encodeFunctionData({
       abi: ERC20Abi,
       functionName: "approve",
-      args: [bridgeAddress, amountToBorrow],
+      args: [dummyBridgeAddress, amountToBorrow],
     }),
   };
 
   const startBridgeInstruction = {
-    targetContract: bridgeAddress,
+    targetContract: dummyBridgeAddress,
     value: BigInt(0),
     data: encodeFunctionData({
       abi: BridgeAbi,
@@ -328,7 +444,7 @@ async function main() {
   console.log("CustomInstructionExecuted event:", customInstructionExecutedEvent, "\n");
 
   const initiateBridgeEvent = await findLatestInitiateBridgeEventInLast30Blocks({
-    bridgeAddress: bridgeAddress as `0x${string}`,
+    bridgeAddress: dummyBridgeAddress as `0x${string}`,
     personalAccountAddress,
   });
   console.log("InitiateBridge event:", initiateBridgeEvent, "\n");
