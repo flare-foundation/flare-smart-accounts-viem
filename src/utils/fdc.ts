@@ -32,13 +32,13 @@ export interface IWeb2JsonResponse {
   responseBody: IWeb2JsonResponseBody;
 }
 
-/** IWeb2Json.Proof struct (flare-periphery-contracts), for use with takeLoan etc. */
+/** IWeb2Json.Proof struct (flare-periphery-contracts), for use with validateUser etc. */
 export interface IWeb2JsonProof {
   merkleProof: readonly `0x${string}`[];
   data: IWeb2JsonResponse;
 }
 
-/** Decoded IWeb2Json.Proof; use when passing to takeLoan. */
+/** Decoded IWeb2Json.Proof; use when passing to validateUser etc. */
 export type Web2JsonProof = IWeb2JsonProof;
 
 /** Decoded IWeb2Json.Response (data part of Proof). */
@@ -49,15 +49,15 @@ const DA_LAYER_POLL_MS = 10_000;
 const RETRY_SLEEP_MS = 20_000;
 const RETRY_ATTEMPTS = 10;
 
-const iWeb2JsonResponseAbi = DummyCertifiedLendingAbi.find(
-  (f) => f.type === "function" && "name" in f && f.name === "takeLoan"
+const validateUserFragment = DummyCertifiedLendingAbi.find(
+  (f) => f.type === "function" && "name" in f && f.name === "validateUser"
 ) as { inputs: readonly { components?: readonly unknown[] }[] } | undefined;
-const proofParam = iWeb2JsonResponseAbi?.inputs?.[0];
+const proofParam = validateUserFragment?.inputs?.[0];
 const iWeb2JsonResponseAbiParam = proofParam?.components?.[1];
 
 function decodeWeb2JsonResponse(responseHex: `0x${string}`): Web2JsonResponse {
   if (!iWeb2JsonResponseAbiParam || typeof iWeb2JsonResponseAbiParam !== "object") {
-    throw new Error("IWeb2Json.Response ABI not found on DummyCertifiedLending takeLoan");
+    throw new Error("IWeb2Json.Response ABI not found on DummyCertifiedLending validateUser");
   }
   const decoded = decodeAbiParameters(
     [iWeb2JsonResponseAbiParam] as Parameters<typeof decodeAbiParameters>[0],

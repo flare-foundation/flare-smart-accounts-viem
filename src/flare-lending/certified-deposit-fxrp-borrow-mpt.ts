@@ -351,9 +351,9 @@ async function main() {
 
   const walletId = 0;
 
-  const dummyERC20Address = "0x4b441981AB1B20194d51EdE2B11c022C46f3F86A";
-  const dummyLendingAddress = "0xfE2dd3051781E0bBC62318752e97399b05e736b6" as `0x${string}`;
-  const dummyBridgeAddress = "0x9eCCC14a0088578365C9F833E130DEE857F97B8D";
+  const dummyERC20Address = "0xF395C367fEfb7239C4f7fC5C3DF30d719A43A734";
+  const dummyLendingAddress = "0xb5627a19Be042015B985431Da98b567e79F14eE0" as `0x${string}`;
+  const dummyBridgeAddress = "0x33D4889324aeC935397E853E933DD5Cc836410be";
 
   const FXRPAddress = "0x0b6A3645c240605887a5532109323A3E12273dc7";
 
