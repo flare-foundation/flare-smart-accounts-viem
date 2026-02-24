@@ -1,4 +1,4 @@
-import { decodeAbiParameters, stringToHex, toHex } from "viem";
+import { decodeAbiParameters, toHex } from "viem";
 import { getContractAddressByName } from "./flare-contract-registry";
 import { publicClient } from "./client";
 import { walletClient } from "./client";
@@ -97,8 +97,8 @@ export async function prepareAttestationRequest(
   requestBody: Record<string, unknown>
 ): Promise<{ abiEncodedRequest: string; [key: string]: unknown }> {
   console.log("Url:", verifierUrl, "\n");
-  const attestationType = toHex(attestationTypeBase, { size: 32 }) as `0x${string}`;
-  const sourceId = toHex(sourceIdBase, { size: 32 }) as `0x${string}`;
+  const attestationType = toHex(attestationTypeBase, { size: 32 });
+  const sourceId = toHex(sourceIdBase, { size: 32 });
 
   const request = {
     attestationType,
@@ -216,10 +216,6 @@ export async function retrieveDataAndProof(abiEncodedRequest: string, roundId: n
     const raw = JSON.parse(body) as { response_hex?: string; proof?: unknown };
     if (raw.response_hex !== undefined) {
       const web2JsonResponse = decodeWeb2JsonResponse(raw.response_hex as `0x${string}`);
-      const web2JsonProof: Web2JsonProof = {
-        merkleProof: (raw.proof ?? []) as readonly `0x${string}`[],
-        data: web2JsonResponse,
-      };
       return { merkleProof: raw.proof ?? [], data: web2JsonResponse } as IWeb2JsonProof;
     }
     await sleep(DA_LAYER_POLL_MS);
