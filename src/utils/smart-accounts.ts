@@ -2,12 +2,15 @@ import { fromHex, type Address } from "viem";
 import { coston2 } from "@flarenetwork/flare-wagmi-periphery-package";
 import { account, publicClient, walletClient } from "./client";
 import { dropsToXrp } from "xrpl";
+import { getContractAddressByName } from "./flare-contract-registry";
 
-export const MASTER_ACCOUNT_CONTROLLER_ADDRESS = "0x434936d47503353f06750Db1A444DBDC5F0AD37c";
+async function getMasterAccountControllerAddress(): Promise<Address> {
+  return getContractAddressByName("MasterAccountController");
+}
 
 export async function getOperatorXrplAddresses() {
   const result = await publicClient.readContract({
-    address: MASTER_ACCOUNT_CONTROLLER_ADDRESS,
+    address: await getMasterAccountControllerAddress(),
     abi: coston2.iMasterAccountControllerAbi,
     functionName: "getXrplProviderWallets",
     args: [],
@@ -17,7 +20,7 @@ export async function getOperatorXrplAddresses() {
 
 export async function getPersonalAccountAddress(xrplAddress: string) {
   const personalAccountAddress = await publicClient.readContract({
-    address: MASTER_ACCOUNT_CONTROLLER_ADDRESS,
+    address: await getMasterAccountControllerAddress(),
     abi: coston2.iMasterAccountControllerAbi,
     functionName: "getPersonalAccount",
     args: [xrplAddress],
@@ -36,7 +39,7 @@ export type GetVaultsReturnType = [bigint[], string[], number[]];
 
 export async function getVaults(): Promise<Vault[]> {
   const _vaults = (await publicClient.readContract({
-    address: MASTER_ACCOUNT_CONTROLLER_ADDRESS,
+    address: await getMasterAccountControllerAddress(),
     abi: coston2.iMasterAccountControllerAbi,
     functionName: "getVaults",
     args: [],
@@ -69,7 +72,7 @@ export type GetAgentVaultsReturnType = [bigint[], string[]];
 
 export async function getAgentVaults(): Promise<AgentVault[]> {
   const _vaults = await publicClient.readContract({
-    address: MASTER_ACCOUNT_CONTROLLER_ADDRESS,
+    address: await getMasterAccountControllerAddress(),
     abi: coston2.iMasterAccountControllerAbi,
     functionName: "getAgentVaults",
     args: [],
@@ -99,7 +102,7 @@ export async function getInstructionFee(encodedInstruction: string) {
   console.log("instructionIdDecimal:", instructionIdDecimal, "\n");
 
   const requestFee = await publicClient.readContract({
-    address: MASTER_ACCOUNT_CONTROLLER_ADDRESS,
+    address: await getMasterAccountControllerAddress(),
     abi: coston2.iMasterAccountControllerAbi,
     functionName: "getInstructionFee",
     args: [instructionIdDecimal],
@@ -116,7 +119,7 @@ export type CustomInstruction = {
 export async function registerCustomInstruction(instructions: CustomInstruction[]): Promise<`0x${string}`> {
   const { request } = await publicClient.simulateContract({
     account: account,
-    address: MASTER_ACCOUNT_CONTROLLER_ADDRESS,
+    address: await getMasterAccountControllerAddress(),
     abi: coston2.iMasterAccountControllerAbi,
     functionName: "registerCustomInstruction",
     args: [instructions],
