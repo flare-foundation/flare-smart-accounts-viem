@@ -4,7 +4,6 @@ import { account, publicClient, walletClient } from "./client";
 
 import { getContractAddressByName } from "./flare-contract-registry";
 import { dropsToXrp, type Client, type Wallet } from "xrpl";
-import { abi } from "../abis/CustomInstructionsFacet";
 import { abi as iInstructionsFacetAbi } from "../abis/IInstructionsFacet";
 import { sendXrplPayment } from "./xrpl";
 
@@ -124,7 +123,7 @@ export async function registerCustomInstruction(instructions: CustomInstruction[
   const { request } = await publicClient.simulateContract({
     account: account,
     address: await getMasterAccountControllerAddress(),
-    abi: coston2.iMasterAccountControllerAbi,
+    abi: iInstructionsFacetAbi,
     functionName: "registerCustomInstruction",
     args: [instructions],
   });
@@ -138,8 +137,8 @@ export async function registerCustomInstruction(instructions: CustomInstruction[
 
 export async function encodeCustomInstruction(instructions: CustomInstruction[], walletId: number) {
   const encodedInstruction = (await publicClient.readContract({
-    address: MASTER_ACCOUNT_CONTROLLER_ADDRESS,
-    abi: abi,
+    address: await getMasterAccountControllerAddress(),
+    abi: iInstructionsFacetAbi,
     functionName: "encodeCustomInstruction",
     args: [instructions],
   })) as `0x${string}`;
@@ -192,7 +191,7 @@ export async function waitForCustomInstructionExecutedEvent({
   let customInstructionExecutedEventFound = false;
 
   const unwatchCustomInstructionExecuted = publicClient.watchContractEvent({
-    address: MASTER_ACCOUNT_CONTROLLER_ADDRESS,
+    address: await getMasterAccountControllerAddress(),
     abi: iInstructionsFacetAbi,
     eventName: "CustomInstructionExecuted",
     onLogs: (logs) => {
