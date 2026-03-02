@@ -22,10 +22,19 @@ import {
 } from "../utils/smart-accounts";
 import { findLatestInitiateBridgeEventInLast30Blocks, transferEventAmountMptToXrplAddress } from "./utils";
 
-async function getCertificateFdcProof(xrplWallet: Wallet, dummyLendingAddress: `0x${string}`): Promise<Web2JsonProof> {
-  const subjectXrplAddress = xrplWallet.address;
-  const xrplJsonRpcUrl = "https://testnet.xrpl-labs.com/";
-
+async function prepareRequestBody(
+  subjectXrplAddress: string,
+  dummyLendingAddress: `0x${string}`,
+  xrplJsonRpcUrl = "https://testnet.xrpl-labs.com/"
+): Promise<{
+  url: string;
+  httpMethod: "POST";
+  headers: string;
+  queryParams: string;
+  body: string;
+  postProcessJq: string;
+  abiSignature: string;
+}> {
   const [expectedCredentialType, expectedIssuer] = (await Promise.all([
     publicClient.readContract({
       address: dummyLendingAddress,
@@ -44,8 +53,6 @@ async function getCertificateFdcProof(xrplWallet: Wallet, dummyLendingAddress: `
   // Verifier disallows jq's error(); use empty when no match so the filter is accepted (encoding will then fail).
   const postProcessJq = `.result | . as $res | ($res | .account_objects[]? | select(.CredentialType == "${escapeForJq(expectedCredentialType)}" and .Issuer == "${escapeForJq(expectedIssuer)}")) as $obj | if $obj then {account: $res.account, credentialType: $obj.CredentialType, issuer: $obj.Issuer} else {account: $res.account, credentialType: "", issuer: ""} end`;
 
-  const attestationType = "Web2Json";
-  const sourceId = "PublicWeb2";
   // ABI signature must match the struct used to decode the jq output (DataTransportObject).
   // Derived from DummyCertifiedLending.abiSignatureHack(DataTransportObject) so it stays in sync.
   const abiSignatureHack = LendingAbi.find((f) => f.type === "function" && f.name === "abiSignatureHack");
@@ -54,7 +61,7 @@ async function getCertificateFdcProof(xrplWallet: Wallet, dummyLendingAddress: `
     throw new Error("DummyCertifiedLending ABI missing abiSignatureHack(DataTransportObject) input type");
   }
   const abiSignature = JSON.stringify(dtoInput);
-  const fdcCredentialCheckRequestBody = {
+  return {
     url: xrplJsonRpcUrl,
     httpMethod: "POST" as const,
     headers: JSON.stringify({ "Content-Type": "application/json" }),
@@ -72,6 +79,12 @@ async function getCertificateFdcProof(xrplWallet: Wallet, dummyLendingAddress: `
     postProcessJq,
     abiSignature,
   };
+}
+
+async function getCertificateFdcProof(xrplWallet: Wallet, dummyLendingAddress: `0x${string}`): Promise<Web2JsonProof> {
+  const attestationType = "Web2Json";
+  const sourceId = "PublicWeb2";
+  const fdcCredentialCheckRequestBody = await prepareRequestBody(xrplWallet.address, dummyLendingAddress);
 
   const verifierBaseUrl = process.env.VERIFIER_URL_TESTNET!;
   const apiKey = process.env.VERIFIER_API_KEY_TESTNET;
