@@ -1,8 +1,11 @@
-import { fromHex, type Address } from "viem";
+import { fromHex, toHex, type Address, type Log } from "viem";
 import { coston2 } from "@flarenetwork/flare-wagmi-periphery-package";
 import { account, publicClient, walletClient } from "./client";
-import { dropsToXrp } from "xrpl";
+
 import { getContractAddressByName } from "./flare-contract-registry";
+import { dropsToXrp, type Client, type Wallet } from "xrpl";
+import { abi as iInstructionsFacetAbi } from "../abis/IInstructionsFacet";
+import { sendXrplPayment } from "./xrpl";
 
 async function getMasterAccountControllerAddress(): Promise<Address> {
   return getContractAddressByName("MasterAccountController");
@@ -120,7 +123,7 @@ export async function registerCustomInstruction(instructions: CustomInstruction[
   const { request } = await publicClient.simulateContract({
     account: account,
     address: await getMasterAccountControllerAddress(),
-    abi: coston2.iMasterAccountControllerAbi,
+    abi: iInstructionsFacetAbi,
     functionName: "registerCustomInstruction",
     args: [instructions],
   });
@@ -130,4 +133,87 @@ export async function registerCustomInstruction(instructions: CustomInstruction[
   console.log("Register custom instruction transaction:", registerCustomInstructionTransaction, "\n");
 
   return registerCustomInstructionTransaction;
+}
+
+export async function encodeCustomInstruction(instructions: CustomInstruction[], walletId: number) {
+  const encodedInstruction = (await publicClient.readContract({
+    address: await getMasterAccountControllerAddress(),
+    abi: iInstructionsFacetAbi,
+    functionName: "encodeCustomInstruction",
+    args: [instructions],
+  })) as `0x${string}`;
+  // NOTE:(Nik) We cut off the `0x` prefix and the first 2 bytes to get the length down to 30 bytes
+  return ("0xff" + toHex(walletId, { size: 1 }).slice(2) + encodedInstruction.slice(6)) as `0x${string}`;
+}
+
+export async function sendCustomInstruction({
+  encodedInstruction,
+  xrplClient,
+  xrplWallet,
+}: {
+  encodedInstruction: `0x${string}`;
+  xrplClient: Client;
+  xrplWallet: Wallet;
+}) {
+  const operatorXrplAddress = (await getOperatorXrplAddresses())[0] as string;
+
+  const instructionFee = await getInstructionFee(encodedInstruction);
+  console.log("Instruction fee:", instructionFee, "\n");
+
+  const customInstructionTransaction = await sendXrplPayment({
+    destination: operatorXrplAddress,
+    amount: instructionFee,
+    memos: [{ Memo: { MemoData: encodedInstruction.slice(2) } }],
+    wallet: xrplWallet,
+    client: xrplClient,
+  });
+
+  return customInstructionTransaction;
+}
+
+type CustomInstructionExecutedArgsType = {
+  args: {
+    personalAccount: Address;
+    callHash: `0x${string}`;
+    customInstruction: Array<CustomInstruction>;
+  };
+};
+type CustomInstructionExecutedEventType = Log & CustomInstructionExecutedArgsType;
+
+export async function waitForCustomInstructionExecutedEvent({
+  encodedInstruction,
+  personalAccountAddress,
+}: {
+  encodedInstruction: `0x${string}`;
+  personalAccountAddress: string;
+}) {
+  let customInstructionExecutedEvent: CustomInstructionExecutedEventType | undefined;
+  let customInstructionExecutedEventFound = false;
+
+  const unwatchCustomInstructionExecuted = publicClient.watchContractEvent({
+    address: await getMasterAccountControllerAddress(),
+    abi: iInstructionsFacetAbi,
+    eventName: "CustomInstructionExecuted",
+    onLogs: (logs) => {
+      for (const log of logs) {
+        customInstructionExecutedEvent = log as CustomInstructionExecutedEventType;
+        if (
+          customInstructionExecutedEvent.args.callHash.slice(6) !== encodedInstruction.slice(6) ||
+          customInstructionExecutedEvent.args.personalAccount.toLowerCase() !== personalAccountAddress.toLowerCase()
+        ) {
+          continue;
+        }
+        customInstructionExecutedEventFound = true;
+        break;
+      }
+    },
+  });
+
+  console.log("Waiting for CustomInstructionExecuted event...");
+  while (!customInstructionExecutedEventFound) {
+    await new Promise((resolve) => setTimeout(resolve, 10000));
+  }
+  unwatchCustomInstructionExecuted();
+
+  return customInstructionExecutedEvent;
 }
