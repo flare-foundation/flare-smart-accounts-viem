@@ -5,9 +5,10 @@ import { account, publicClient, walletClient } from "./client";
 import { getContractAddressByName } from "./flare-contract-registry";
 import { dropsToXrp, type Client, type Wallet } from "xrpl";
 import { abi as iInstructionsFacetAbi } from "../abis/IInstructionsFacet";
+import { abi as iCustomInstructionsFacetAbi } from "../abis/ICustomInstructionsFacet";
 import { sendXrplPayment } from "./xrpl";
 
-async function getMasterAccountControllerAddress(): Promise<Address> {
+export async function getMasterAccountControllerAddress(): Promise<Address> {
   return getContractAddressByName("MasterAccountController");
 }
 
@@ -123,7 +124,7 @@ export async function registerCustomInstruction(instructions: CustomInstruction[
   const { request } = await publicClient.simulateContract({
     account: account,
     address: await getMasterAccountControllerAddress(),
-    abi: iInstructionsFacetAbi,
+    abi: iCustomInstructionsFacetAbi,
     functionName: "registerCustomInstruction",
     args: [instructions],
   });
@@ -138,7 +139,7 @@ export async function registerCustomInstruction(instructions: CustomInstruction[
 export async function encodeCustomInstruction(instructions: CustomInstruction[], walletId: number) {
   const encodedInstruction = (await publicClient.readContract({
     address: await getMasterAccountControllerAddress(),
-    abi: iInstructionsFacetAbi,
+    abi: iCustomInstructionsFacetAbi,
     functionName: "encodeCustomInstruction",
     args: [instructions],
   })) as `0x${string}`;
