@@ -9,18 +9,16 @@
 
 import { getPersonalAccountAddress, getXrplAccountForAddress } from "./utils/smart-accounts";
 
-async function main() {
-  const xrplAddress = process.argv[2];
-  if (!xrplAddress) {
-    console.error("Usage: pnpm run script src/is-smart-account.ts <xrpl-address>");
-    process.exit(1);
-  }
+// XRPL address
+const XRPL_ADDRESS = "rwda86zPcrrph3Db9nBQxHNw2uuK1VrGSg";
 
-  const evmAddress = await getPersonalAccountAddress(xrplAddress);
+async function main() {
+  const evmAddress = await getPersonalAccountAddress(XRPL_ADDRESS);
   const xrplOwner = await getXrplAccountForAddress(evmAddress);
 
   if (xrplOwner) {
-    console.log("XRPL address:", xrplAddress);
+    console.log("Address is a smart account");
+    console.log("XRPL address:", XRPL_ADDRESS);
     console.log("EVM (personal) address:", evmAddress);
   } else {
     console.log("Not a smart account (or not yet activated)");
