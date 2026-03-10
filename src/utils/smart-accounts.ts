@@ -33,6 +33,22 @@ export async function getPersonalAccountAddress(xrplAddress: string) {
   return personalAccountAddress;
 }
 
+
+export async function getXrplAccountForAddress(evmAddress: Address): Promise<`0x${string}`> {
+  const xrplOwner = await publicClient.readContract({
+    address: evmAddress,
+    abi: coston2.iPersonalAccountAbi,
+    functionName: "xrplOwner",
+    args: [],
+  });
+  return xrplOwner && xrplOwner.length > 0 ? evmAddress : "0x0000000000000000000000000000000000000000";
+}
+
+export async function isSmartAccount(evmAddress: Address): Promise<boolean> {
+  const smartAccountAddress = await getXrplAccountForAddress(evmAddress);
+  return smartAccountAddress !== "0x0000000000000000000000000000000000000000";
+}
+
 export type Vault = {
   id: bigint;
   address: Address;
