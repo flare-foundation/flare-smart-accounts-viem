@@ -5,6 +5,7 @@ import { abi as noticeBoardAbi } from "./abis/NoticeBoard";
 import {
   encodeCustomInstruction,
   getPersonalAccountAddress,
+  isCustomInstructionRegistered,
   registerCustomInstruction,
   sendCustomInstruction,
   waitForCustomInstructionExecutedEvent,
@@ -61,8 +62,16 @@ async function main() {
   const personalAccountAddress = await getPersonalAccountAddress(xrplWallet.address);
   console.log("Personal account address:", personalAccountAddress, "\n");
 
-  const customInstructionCallHash = await registerCustomInstruction(customInstructions);
-  console.log("Custom instruction call hash:", customInstructionCallHash, "\n");
+  const { customInstructionHash, isRegistered } = await isCustomInstructionRegistered(customInstructions);
+  console.log("Custom instruction hash:", customInstructionHash, "\n");
+
+  if (!isRegistered) {
+    const customInstructionCallHash = await registerCustomInstruction(customInstructions);
+    console.log("Custom instruction call hash:", customInstructionCallHash, "\n");
+  } else {
+    console.log("Custom instruction already registered. Skipping register transaction.\n");
+  }
+
   const encodedInstruction = await encodeCustomInstruction(customInstructions, walletId);
   console.log("Encoded instructions:", encodedInstruction, "\n");
 

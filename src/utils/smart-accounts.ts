@@ -4,8 +4,6 @@ import { account, publicClient, walletClient } from "./client";
 
 import { getContractAddressByName } from "./flare-contract-registry";
 import { dropsToXrp, type Client, type Wallet } from "xrpl";
-import { abi as iInstructionsFacetAbi } from "../abis/IInstructionsFacet";
-import { abi as iCustomInstructionsFacetAbi } from "../abis/ICustomInstructionsFacet";
 import { sendXrplPayment } from "./xrpl";
 
 export async function getMasterAccountControllerAddress(): Promise<Address> {
@@ -136,11 +134,43 @@ export type CustomInstruction = {
   data: `0x${string}`;
 };
 
+export async function getCustomInstructionHash(instructions: CustomInstruction[]): Promise<`0x${string}`> {
+  const customInstructionHash = await publicClient.readContract({
+    address: await getMasterAccountControllerAddress(),
+    abi: coston2.iCustomInstructionsFacetAbi,
+    functionName: "encodeCustomInstruction",
+    args: [instructions],
+  });
+  return customInstructionHash;
+}
+
+export async function getCustomInstruction(customInstructionHash: `0x${string}`): Promise<CustomInstruction[]> {
+  const customInstruction = (await publicClient.readContract({
+    address: await getMasterAccountControllerAddress(),
+    abi: coston2.iCustomInstructionsFacetAbi,
+    functionName: "getCustomInstruction",
+    args: [customInstructionHash],
+  })) as CustomInstruction[];
+  return customInstruction;
+}
+
+export async function isCustomInstructionRegistered(instructions: CustomInstruction[]): Promise<{
+  customInstructionHash: `0x${string}`;
+  isRegistered: boolean;
+}> {
+  const customInstructionHash = await getCustomInstructionHash(instructions);
+  const customInstruction = await getCustomInstruction(customInstructionHash);
+  return {
+    customInstructionHash,
+    isRegistered: customInstruction.length > 0,
+  };
+}
+
 export async function registerCustomInstruction(instructions: CustomInstruction[]): Promise<`0x${string}`> {
   const { request } = await publicClient.simulateContract({
     account: account,
     address: await getMasterAccountControllerAddress(),
-    abi: iCustomInstructionsFacetAbi,
+    abi: coston2.iCustomInstructionsFacetAbi,
     functionName: "registerCustomInstruction",
     args: [instructions],
   });
@@ -153,12 +183,7 @@ export async function registerCustomInstruction(instructions: CustomInstruction[
 }
 
 export async function encodeCustomInstruction(instructions: CustomInstruction[], walletId: number) {
-  const encodedInstruction = (await publicClient.readContract({
-    address: await getMasterAccountControllerAddress(),
-    abi: iCustomInstructionsFacetAbi,
-    functionName: "encodeCustomInstruction",
-    args: [instructions],
-  })) as `0x${string}`;
+  const encodedInstruction = await getCustomInstructionHash(instructions);
   // NOTE:(Nik) We cut off the `0x` prefix and the first 2 bytes to get the length down to 30 bytes
   return ("0xff" + toHex(walletId, { size: 1 }).slice(2) + encodedInstruction.slice(6)) as `0x${string}`;
 }
@@ -188,15 +213,6 @@ export async function sendCustomInstruction({
   return customInstructionTransaction;
 }
 
-type CustomInstructionExecutedArgsType = {
-  args: {
-    personalAccount: Address;
-    callHash: `0x${string}`;
-    customInstruction: Array<CustomInstruction>;
-  };
-};
-type CustomInstructionExecutedEventType = Log & CustomInstructionExecutedArgsType;
-
 export async function waitForCustomInstructionExecutedEvent({
   encodedInstruction,
   personalAccountAddress,
@@ -204,19 +220,25 @@ export async function waitForCustomInstructionExecutedEvent({
   encodedInstruction: `0x${string}`;
   personalAccountAddress: string;
 }) {
-  let customInstructionExecutedEvent: CustomInstructionExecutedEventType | undefined;
+  let customInstructionExecutedEvent: Log | undefined;
   let customInstructionExecutedEventFound = false;
 
   const unwatchCustomInstructionExecuted = publicClient.watchContractEvent({
     address: await getMasterAccountControllerAddress(),
-    abi: iInstructionsFacetAbi,
+    abi: coston2.iInstructionsFacetAbi,
     eventName: "CustomInstructionExecuted",
     onLogs: (logs) => {
       for (const log of logs) {
-        customInstructionExecutedEvent = log as CustomInstructionExecutedEventType;
+        const callHash = log.args.callHash;
+        const personalAccount = log.args.personalAccount;
+        if (!callHash || !personalAccount) {
+          continue;
+        }
+
+        customInstructionExecutedEvent = log;
         if (
-          customInstructionExecutedEvent.args.callHash.slice(6) !== encodedInstruction.slice(6) ||
-          customInstructionExecutedEvent.args.personalAccount.toLowerCase() !== personalAccountAddress.toLowerCase()
+          callHash.slice(6) !== encodedInstruction.slice(6) ||
+          personalAccount.toLowerCase() !== personalAccountAddress.toLowerCase()
         ) {
           continue;
         }
