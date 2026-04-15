@@ -4,12 +4,13 @@ import type { Memo } from "xrpl";
 export type SendXrplPaymentInputType = {
   destination: string;
   amount: number;
-  memos: Memo[];
+  memos?: Memo[];
+  destinationTag?: number;
   wallet: Wallet;
   client: Client;
 };
 
-export async function sendXrplPayment({ destination, memos, amount, wallet, client }: SendXrplPaymentInputType) {
+export async function sendXrplPayment({ destination, memos, destinationTag, amount, wallet, client }: SendXrplPaymentInputType) {
   await client.connect();
 
   const preparedTransaction = await client.autofill({
@@ -17,7 +18,8 @@ export async function sendXrplPayment({ destination, memos, amount, wallet, clie
     Account: wallet.address,
     Amount: xrpToDrops(amount),
     Destination: destination,
-    Memos: memos,
+    ...(memos && memos.length > 0 ? { Memos: memos } : {}),
+    ...(destinationTag !== undefined ? { DestinationTag: destinationTag } : {}),
   });
 
   const signedTransaction = wallet.sign(preparedTransaction);

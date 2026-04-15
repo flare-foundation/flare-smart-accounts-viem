@@ -27,3 +27,17 @@ type CustomInstructionExecutedArgsType = {
   };
 };
 export type CustomInstructionExecutedEventType = Log & CustomInstructionExecutedArgsType;
+
+// TODO:(Nik) Import from library when the library has been updated.
+// Also investigate DirectMintingExecutedToSmartAccount event (smart-account variant) and when each is emitted.
+type DirectMintingExecutedArgsType = {
+  args: {
+    transactionId: `0x${string}`;
+    targetAddress: Address;
+    executor: Address;
+    mintedAmountUBA: bigint;
+    mintingFeeUBA: bigint;
+    executorFeeUBA: bigint;
+  };
+};
+export type DirectMintingExecutedEventType = Log & DirectMintingExecutedArgsType;
