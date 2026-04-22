@@ -39,3 +39,13 @@ export async function getFxrpDecimals() {
   });
   return decimals;
 }
+
+export async function calculateAmountToSend(lots: bigint): Promise<bigint> {
+  const assetManagerAddress = await getAssetManagerFXRPAddress();
+  const settings = await publicClient.readContract({
+    address: assetManagerAddress,
+    abi: coston2.iAssetManagerAbi,
+    functionName: "getSettings",
+  });
+  return lots * BigInt(settings.lotSizeAMG) * BigInt(settings.assetMintingGranularityUBA);
+}
