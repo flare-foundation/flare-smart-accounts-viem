@@ -15,6 +15,16 @@ export async function getDirectMintingPaymentAddress(
   return paymentAddress;
 }
 
+export async function getMintingTagManagerAddress(
+  assetManagerAddress: Address,
+): Promise<Address> {
+  return publicClient.readContract({
+    address: assetManagerAddress,
+    abi: iDirectMintingAbi,
+    functionName: "getMintingTagManager",
+  });
+}
+
 export function waitForDirectMintingExecuted({
   assetManagerAddress,
   targetAddress,

@@ -216,6 +216,19 @@ export const abi = [
     type: "function",
   },
   {
+    inputs: [],
+    name: "getMintingTagManager",
+    outputs: [
+      {
+        internalType: "address",
+        name: "",
+        type: "address",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
     inputs: [
       {
         components: [

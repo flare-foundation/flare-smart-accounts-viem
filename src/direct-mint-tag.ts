@@ -6,18 +6,18 @@ import { getPersonalAccountAddress } from "./utils/smart-accounts";
 import { getContractAddressByName } from "./utils/flare-contract-registry";
 import { getFxrpBalance } from "./utils/fassets";
 import { abi as iMintingTagManagerAbi } from "./abis/IMintingTagManager";
-import { getDirectMintingPaymentAddress, waitForDirectMintingExecuted } from "./utils/direct-minting";
+import {
+  getDirectMintingPaymentAddress,
+  getMintingTagManagerAddress,
+  waitForDirectMintingExecuted,
+} from "./utils/direct-minting";
 
 // Amount in XRP to send for direct minting (must cover minted value + minting fee + executor fee)
 const DIRECT_MINT_AMOUNT_XRP = 10;
 
-// TODO: Once MintingTagManager is registered in FlareContractRegistry, replace with:
-//   const mintingTagManagerAddress = await getContractAddressByName("MintingTagManager");
-const MINTING_TAG_MANAGER_ADDRESS: Address = "0x094511737909b626391106bBc21B25feb2D67B96";
-
-async function reserveTag(): Promise<bigint> {
+async function reserveTag(mintingTagManagerAddress: Address): Promise<bigint> {
   const reservationFee = await publicClient.readContract({
-    address: MINTING_TAG_MANAGER_ADDRESS,
+    address: mintingTagManagerAddress,
     abi: iMintingTagManagerAbi,
     functionName: "reservationFee",
   });
@@ -25,7 +25,7 @@ async function reserveTag(): Promise<bigint> {
 
   const { result, request } = await publicClient.simulateContract({
     account,
-    address: MINTING_TAG_MANAGER_ADDRESS,
+    address: mintingTagManagerAddress,
     abi: iMintingTagManagerAbi,
     functionName: "reserve",
     value: reservationFee as bigint,
@@ -40,10 +40,14 @@ async function reserveTag(): Promise<bigint> {
   return tag;
 }
 
-async function setMintingRecipient(tag: bigint, recipient: Address): Promise<void> {
+async function setMintingRecipient(
+  mintingTagManagerAddress: Address,
+  tag: bigint,
+  recipient: Address,
+): Promise<void> {
   const { request } = await publicClient.simulateContract({
     account,
-    address: MINTING_TAG_MANAGER_ADDRESS,
+    address: mintingTagManagerAddress,
     abi: iMintingTagManagerAbi,
     functionName: "setMintingRecipient",
     args: [tag, recipient],
@@ -54,24 +58,30 @@ async function setMintingRecipient(tag: bigint, recipient: Address): Promise<voi
   console.log("Set minting recipient for tag", tag, "to", recipient, "\n");
 }
 
-async function getMintingRecipient(tag: bigint): Promise<Address> {
+async function getMintingRecipient(
+  mintingTagManagerAddress: Address,
+  tag: bigint,
+): Promise<Address> {
   return publicClient.readContract({
-    address: MINTING_TAG_MANAGER_ADDRESS,
+    address: mintingTagManagerAddress,
     abi: iMintingTagManagerAbi,
     functionName: "mintingRecipient",
     args: [tag],
   }) as Promise<Address>;
 }
 
-async function getOrReserveTag(recipient: Address): Promise<bigint> {
+async function getOrReserveTag(
+  mintingTagManagerAddress: Address,
+  recipient: Address,
+): Promise<bigint> {
   if (process.env.MINTING_TAG) {
     const tag = BigInt(process.env.MINTING_TAG);
     console.log("Using existing minting tag from .env:", tag, "\n");
     return tag;
   }
 
-  const tag = await reserveTag();
-  await setMintingRecipient(tag, recipient);
+  const tag = await reserveTag(mintingTagManagerAddress);
+  await setMintingRecipient(mintingTagManagerAddress, tag, recipient);
   console.log("Add MINTING_TAG=" + tag.toString() + " to your .env to reuse this tag.\n");
   return tag;
 }
@@ -86,9 +96,12 @@ async function main() {
   ]);
   console.log("Personal account address:", personalAccountAddress, "\n");
 
-  const tag = await getOrReserveTag(personalAccountAddress);
+  const mintingTagManagerAddress = await getMintingTagManagerAddress(assetManagerAddress);
+  console.log("MintingTagManager address:", mintingTagManagerAddress, "\n");
 
-  const configuredRecipient = await getMintingRecipient(tag);
+  const tag = await getOrReserveTag(mintingTagManagerAddress, personalAccountAddress);
+
+  const configuredRecipient = await getMintingRecipient(mintingTagManagerAddress, tag);
   console.log("Minting recipient for tag:", configuredRecipient, "\n");
 
   const [coreVaultXrplAddress, initialBalance] = await Promise.all([

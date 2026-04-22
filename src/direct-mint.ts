@@ -9,10 +9,23 @@ import { getDirectMintingPaymentAddress, waitForDirectMintingExecuted } from "./
 // Amount in XRP to send for direct minting (must cover minted value + minting fee + executor fee)
 const DIRECT_MINT_AMOUNT_XRP = 10;
 
-const DIRECT_MINTING_SMART_ACCOUNT_PREFIX = "4642505266410018";
+// The memo is a packed 32-byte PaymentReference (see AssetManager's PaymentReference.sol):
+//   [ 8-byte type tag | 4 zero bytes | 20-byte recipient address ]
+// The type tag is "FBPRfA" (0x464250526641, "Flare Bridge Payment Reference / fAsset")
+// followed by the 2-byte discriminator 0x0018 identifying DIRECT_MINTING to a smart account.
+// The 4 zero bytes pad the 160-bit address up to the 192-bit payload slot.
+const DIRECT_MINTING_PREFIX = "4642505266410018";
 
+/**
+ * Builds the 32-byte direct-minting PaymentReference memo for an XRPL payment
+ * to the FXRP Core Vault. The returned hex string encodes the DIRECT_MINTING
+ * type tag followed by the recipient smart account address (see prefix comment
+ * above for the bit layout).
+ *
+ * See https://dev.flare.network/fassets/direct-minting#memo-field
+ */
 function buildDirectMintingMemo(recipientAddress: Address): string {
-  return DIRECT_MINTING_SMART_ACCOUNT_PREFIX + "00000000" + recipientAddress.slice(2).toLowerCase();
+  return DIRECT_MINTING_PREFIX + "00000000" + recipientAddress.slice(2).toLowerCase();
 }
 
 async function sendDirectMintPayment({
