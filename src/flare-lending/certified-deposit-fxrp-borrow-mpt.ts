@@ -1,25 +1,22 @@
-import { encodeFunctionData } from "viem";
+import { encodeFunctionData, type Address } from "viem";
 import { Client, Wallet } from "xrpl";
 import { MPT_ISSUANCE_ID } from "./config";
 import { abi as BridgeAbi } from "../abis/DummyBridge";
 import { abi as LendingAbi } from "../abis/DummyCertifiedLending";
 import { abi as ERC20Abi } from "../abis/ERC20";
-import { publicClient, walletClient } from "../utils/client";
-import { account } from "../utils/client";
+import { account, publicClient, walletClient } from "../utils/client";
 import {
   prepareAttestationRequest,
   retrieveDataAndProofWithRetry,
   submitAttestationRequest,
   type Web2JsonProof,
 } from "../utils/fdc";
+import { getPersonalAccountAddress, type Call } from "../utils/smart-accounts";
 import {
-  encodeCustomInstruction,
-  getPersonalAccountAddress,
-  registerCustomInstruction,
-  sendCustomInstruction,
-  waitForCustomInstructionExecutedEvent,
-  type CustomInstruction,
-} from "../utils/smart-accounts";
+  DIRECT_MINT_AMOUNT_XRP,
+  MEMO_ONLY_AMOUNT_XRP,
+  sendBatch,
+} from "../utils/memo-instructions";
 import { findLatestInitiateBridgeEventInLast30Blocks, transferEventAmountMptToXrplAddress } from "./utils";
 
 async function prepareRequestBody(
@@ -117,13 +114,16 @@ async function getCertificateFdcProof(xrplWallet: Wallet, dummyLendingAddress: `
  * Ensures the XRPL user is validated on DummyLending. If validUser(personalAccount) is false,
  * fetches the certificate FDC proof and calls validateUser(proof) on the DummyLending contract.
  */
-async function validateUser(xrplWallet: Wallet, dummyLendingAddress: `0x${string}`): Promise<void> {
-  const personalAccountAddress = await getPersonalAccountAddress(xrplWallet.address);
+async function validateUser(
+  xrplWallet: Wallet,
+  personalAccount: Address,
+  dummyLendingAddress: `0x${string}`
+): Promise<void> {
   const isAlreadyValid = await publicClient.readContract({
     address: dummyLendingAddress,
     abi: LendingAbi,
     functionName: "validUser",
-    args: [personalAccountAddress],
+    args: [personalAccount],
   });
   if (isAlreadyValid) {
     console.log("User already validated on DummyLending, skipping validateUser tx.\n");
@@ -148,103 +148,116 @@ async function main() {
   const xrplWallet = Wallet.fromSeed(process.env.XRPL_SEED!);
   const vaultWallet = Wallet.fromSeed(process.env.VAULT_SEED!);
 
-  const walletId = 0;
-
   const dummyERC20Address = "0xF395C367fEfb7239C4f7fC5C3DF30d719A43A734";
   const dummyLendingAddress = "0xb5627a19Be042015B985431Da98b567e79F14eE0" as `0x${string}`;
   const dummyBridgeAddress = "0x33D4889324aeC935397E853E933DD5Cc836410be";
 
   const FXRPAddress = "0x0b6A3645c240605887a5532109323A3E12273dc7";
 
-  const amountToDeposit = 100; // In wei
-  const amountToBorrow = 10n; // In wei
+  const amountToDeposit = 100;
+  const amountToBorrow = 10n;
 
-  await validateUser(xrplWallet, dummyLendingAddress);
+  const personalAccount = await getPersonalAccountAddress(xrplWallet.address);
+  console.log("Personal account address:", personalAccount, "\n");
 
-  // NOTE:(Filip) Allow + call deposit + take Loan + approve bridge + withdraw from bridge
-  const allowInstructionFXRP = {
-    targetContract: FXRPAddress,
-    value: BigInt(0),
-    data: encodeFunctionData({
-      abi: ERC20Abi,
-      functionName: "approve",
-      args: [dummyLendingAddress, amountToDeposit],
-    }),
-  };
+  await validateUser(xrplWallet, personalAccount, dummyLendingAddress);
 
-  const depositCollateral = {
-    targetContract: dummyLendingAddress,
-    value: BigInt(0),
-    data: encodeFunctionData({
-      abi: LendingAbi,
-      functionName: "depositCollateral",
-      args: [amountToDeposit],
-    }),
-  };
+  // XRPL caps each memo at ~1024 bytes. The `approve` and `initiateBridge`
+  // encodings are large enough that no 2-call combination fits except
+  // `[depositCollateral, takeLoan]`, so the 5 calls split into 4 batches.
+  const approveFxrpCalls: Call[] = [
+    {
+      target: FXRPAddress,
+      value: BigInt(0),
+      data: encodeFunctionData({
+        abi: ERC20Abi,
+        functionName: "approve",
+        args: [dummyLendingAddress, amountToDeposit],
+      }),
+    },
+  ];
+  const depositAndBorrowCalls: Call[] = [
+    {
+      target: dummyLendingAddress,
+      value: BigInt(0),
+      data: encodeFunctionData({
+        abi: LendingAbi,
+        functionName: "depositCollateral",
+        args: [amountToDeposit],
+      }),
+    },
+    {
+      target: dummyLendingAddress,
+      value: BigInt(0),
+      data: encodeFunctionData({
+        abi: LendingAbi,
+        functionName: "takeLoan",
+        args: [amountToBorrow],
+      }),
+    },
+  ];
+  const approveUsdtCalls: Call[] = [
+    {
+      target: dummyERC20Address,
+      value: BigInt(0),
+      data: encodeFunctionData({
+        abi: ERC20Abi,
+        functionName: "approve",
+        args: [dummyBridgeAddress, amountToBorrow],
+      }),
+    },
+  ];
+  const bridgeCalls: Call[] = [
+    {
+      target: dummyBridgeAddress,
+      value: BigInt(0),
+      data: encodeFunctionData({
+        abi: BridgeAbi,
+        functionName: "initiateBridge",
+        args: [xrplWallet.address, amountToBorrow],
+      }),
+    },
+  ];
 
-  const takeLoanInstruction = {
-    targetContract: dummyLendingAddress,
-    value: BigInt(0),
-    data: encodeFunctionData({
-      abi: LendingAbi,
-      functionName: "takeLoan",
-      args: [amountToBorrow],
-    }),
-  };
-
-  const allowInstructionUSDT = {
-    targetContract: dummyERC20Address,
-    value: BigInt(0),
-    data: encodeFunctionData({
-      abi: ERC20Abi,
-      functionName: "approve",
-      args: [dummyBridgeAddress, amountToBorrow],
-    }),
-  };
-
-  const startBridgeInstruction = {
-    targetContract: dummyBridgeAddress,
-    value: BigInt(0),
-    data: encodeFunctionData({
-      abi: BridgeAbi,
-      functionName: "initiateBridge",
-      args: [xrplWallet.address, amountToBorrow],
-    }),
-  };
-
-  const customInstructions = [
-    allowInstructionFXRP,
-    depositCollateral,
-    takeLoanInstruction,
-    allowInstructionUSDT,
-    startBridgeInstruction,
-  ] as CustomInstruction[];
-  console.log("Custom instructions:", customInstructions, "\n");
-
-  const personalAccountAddress = await getPersonalAccountAddress(xrplWallet.address);
-  console.log("Personal account address:", personalAccountAddress, "\n");
-
-  const customInstructionCallHash = await registerCustomInstruction(customInstructions);
-  console.log("Custom instruction call hash:", customInstructionCallHash, "\n");
-  const encodedInstruction = await encodeCustomInstruction(customInstructions, walletId);
-  console.log("Encoded instructions:", encodedInstruction, "\n");
-
-  const customInstructionTransaction = await sendCustomInstruction({
-    encodedInstruction,
+  await sendBatch({
+    label: "approve-fxrp",
+    calls: approveFxrpCalls,
+    amountXrp: DIRECT_MINT_AMOUNT_XRP,
+    personalAccount,
     xrplClient,
     xrplWallet,
   });
-  console.log("Custom instruction transaction hash:", customInstructionTransaction.result.hash, "\n");
 
-  const customInstructionExecutedEvent = await waitForCustomInstructionExecutedEvent({
-    encodedInstruction,
-    personalAccountAddress,
+  await sendBatch({
+    label: "deposit-and-borrow",
+    calls: depositAndBorrowCalls,
+    amountXrp: MEMO_ONLY_AMOUNT_XRP,
+    personalAccount,
+    xrplClient,
+    xrplWallet,
   });
-  console.log("CustomInstructionExecuted event:", customInstructionExecutedEvent, "\n");
+
+  await sendBatch({
+    label: "approve-usdt",
+    calls: approveUsdtCalls,
+    amountXrp: MEMO_ONLY_AMOUNT_XRP,
+    personalAccount,
+    xrplClient,
+    xrplWallet,
+  });
+
+  await sendBatch({
+    label: "bridge",
+    calls: bridgeCalls,
+    amountXrp: MEMO_ONLY_AMOUNT_XRP,
+    personalAccount,
+    xrplClient,
+    xrplWallet,
+  });
 
   const initiateBridgeEvent = await findLatestInitiateBridgeEventInLast30Blocks({
     bridgeAddress: dummyBridgeAddress as `0x${string}`,
-    personalAccountAddress,
+    personalAccountAddress: personalAccount,
   });
   console.log("InitiateBridge event:", initiateBridgeEvent, "\n");
 
