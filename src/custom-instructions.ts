@@ -1,22 +1,17 @@
 import { encodeFunctionData } from "viem";
+import { Client, Wallet } from "xrpl";
 import { abi as checkpointAbi } from "./abis/Checkpoint";
 import { abi as piggyBankAbi } from "./abis/PiggyBank";
 import { abi as noticeBoardAbi } from "./abis/NoticeBoard";
+import { getPersonalAccountAddress, type Call } from "./utils/smart-accounts";
 import {
-  encodeCustomInstruction,
-  getPersonalAccountAddress,
-  isCustomInstructionRegistered,
-  registerCustomInstruction,
-  sendCustomInstruction,
-  waitForCustomInstructionExecutedEvent,
-  type CustomInstruction,
-} from "./utils/smart-accounts";
-import { Client, Wallet } from "xrpl";
+  DIRECT_MINT_AMOUNT_XRP,
+  MEMO_ONLY_AMOUNT_XRP,
+  sendBatch,
+} from "./utils/memo-instructions";
 
 // NOTE:(Nik) For this example to work, you first need to faucet C2FLR to your personal account address.
 async function main() {
-  const walletId = 0;
-
   const checkpointAddress = "0xEE6D54382aA623f4D16e856193f5f8384E487002";
   const piggyBankAddress = "0x42Ccd4F0aB1C6Fa36BfA37C9e30c4DC4DD94dE42";
   const noticeBoardAddress = "0x59D57652BF4F6d97a6e555800b3920Bd775661Dc";
@@ -25,9 +20,11 @@ async function main() {
   const pinNoticeAmount = 1 * 10 ** 18;
   const pinNoticeMessage = "Hello World!";
 
-  const customInstructions = [
+  // XRPL caps each memo at ~1024 bytes. `pinNotice` has a string arg that pushes
+  // the 3-call version over the limit, so it goes in its own batch.
+  const checkpointAndDepositCalls: Call[] = [
     {
-      targetContract: checkpointAddress,
+      target: checkpointAddress,
       value: BigInt(0),
       data: encodeFunctionData({
         abi: checkpointAbi,
@@ -36,7 +33,7 @@ async function main() {
       }),
     },
     {
-      targetContract: piggyBankAddress,
+      target: piggyBankAddress,
       value: BigInt(depositAmount),
       data: encodeFunctionData({
         abi: piggyBankAbi,
@@ -44,8 +41,10 @@ async function main() {
         args: [],
       }),
     },
+  ];
+  const pinNoticeCalls: Call[] = [
     {
-      targetContract: noticeBoardAddress,
+      target: noticeBoardAddress,
       value: BigInt(pinNoticeAmount),
       data: encodeFunctionData({
         abi: noticeBoardAbi,
@@ -53,40 +52,31 @@ async function main() {
         args: [pinNoticeMessage],
       }),
     },
-  ] as CustomInstruction[];
-  console.log("Custom instructions:", customInstructions, "\n");
+  ];
 
   const xrplClient = new Client(process.env.XRPL_TESTNET_RPC_URL!);
   const xrplWallet = Wallet.fromSeed(process.env.XRPL_SEED!);
 
-  const personalAccountAddress = await getPersonalAccountAddress(xrplWallet.address);
-  console.log("Personal account address:", personalAccountAddress, "\n");
+  const personalAccount = await getPersonalAccountAddress(xrplWallet.address);
+  console.log("Personal account address:", personalAccount, "\n");
 
-  const { customInstructionHash, isRegistered } = await isCustomInstructionRegistered(customInstructions);
-  console.log("Custom instruction hash:", customInstructionHash, "\n");
-
-  if (!isRegistered) {
-    const customInstructionCallHash = await registerCustomInstruction(customInstructions);
-    console.log("Custom instruction call hash:", customInstructionCallHash, "\n");
-  } else {
-    console.log("Custom instruction already registered. Skipping register transaction.\n");
-  }
-
-  const encodedInstruction = await encodeCustomInstruction(customInstructions, walletId);
-  console.log("Encoded instructions:", encodedInstruction, "\n");
-
-  const customInstructionTransaction = await sendCustomInstruction({
-    encodedInstruction,
+  await sendBatch({
+    label: "checkpoint-and-deposit",
+    calls: checkpointAndDepositCalls,
+    amountXrp: DIRECT_MINT_AMOUNT_XRP,
+    personalAccount,
     xrplClient,
     xrplWallet,
   });
-  console.log("Custom instruction transaction hash:", customInstructionTransaction.result.hash, "\n");
 
-  const customInstructionExecutedEvent = await waitForCustomInstructionExecutedEvent({
-    encodedInstruction,
-    personalAccountAddress,
+  await sendBatch({
+    label: "pin-notice",
+    calls: pinNoticeCalls,
+    amountXrp: MEMO_ONLY_AMOUNT_XRP,
+    personalAccount,
+    xrplClient,
+    xrplWallet,
   });
-  console.log("CustomInstructionExecuted event:", customInstructionExecutedEvent, "\n");
 }
 
 void main()
