@@ -235,6 +235,7 @@ export async function sendMemoFieldInstruction({
 
   const event = await waitForUserOperationExecuted({ personalAccount, nonce });
   console.log(`[${label}] UserOperationExecuted event:`, event, "\n");
+  return event;
 }
 
 export async function waitForUserOperationExecuted({
