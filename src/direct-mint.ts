@@ -4,10 +4,11 @@ import { sendXrplPayment } from "./utils/xrpl";
 import { getPersonalAccountAddress } from "./utils/smart-accounts";
 import { getContractAddressByName } from "./utils/flare-contract-registry";
 import { getFxrpBalance } from "./utils/fassets";
-import { getDirectMintingPaymentAddress, waitForDirectMintingExecuted } from "./utils/direct-minting";
-
-// Amount in XRP to send for direct minting (must cover minted value + minting fee + executor fee)
-const DIRECT_MINT_AMOUNT_XRP = 10;
+import {
+  computeDirectMintingPaymentAmountXrp,
+  getDirectMintingPaymentAddress,
+  waitForDirectMintingExecuted,
+} from "./utils/direct-minting";
 
 // The memo is a packed 32-byte PaymentReference (see AssetManager's PaymentReference.sol):
 //   [ 8-byte type tag | 4 zero bytes | 20-byte recipient address ]
@@ -57,6 +58,10 @@ async function sendDirectMintPayment({
 }
 
 async function main() {
+  // Net FXRP amount to mint in XRP. Minting + executor fees are fetched from
+  // AssetManagerFXRP and added on top to form the XRPL payment amount.
+  const fxrpMintAmount = 10;
+
   const xrplClient = new Client(process.env.XRPL_TESTNET_RPC_URL!);
   const xrplWallet = Wallet.fromSeed(process.env.XRPL_SEED!);
 
@@ -66,18 +71,20 @@ async function main() {
   ]);
   console.log("Personal account address:", personalAccountAddress, "\n");
 
-  const [coreVaultXrplAddress, initialBalance] = await Promise.all([
+  const [coreVaultXrplAddress, initialBalance, paymentAmountXrp] = await Promise.all([
     getDirectMintingPaymentAddress(assetManagerAddress),
     getFxrpBalance(personalAccountAddress),
+    computeDirectMintingPaymentAmountXrp({ netMintAmountXrp: fxrpMintAmount }),
   ]);
   console.log("Core Vault XRPL address:", coreVaultXrplAddress, "\n");
   console.log("AssetManagerFXRP address:", assetManagerAddress, "\n");
   console.log("Initial FXRP balance:", initialBalance, "\n");
+  console.log("Payment amount (XRP, net mint + fees):", paymentAmountXrp, "\n");
 
   await sendDirectMintPayment({
     coreVaultXrplAddress,
     recipientAddress: personalAccountAddress,
-    amountXrp: DIRECT_MINT_AMOUNT_XRP,
+    amountXrp: paymentAmountXrp,
     xrplClient,
     xrplWallet,
   });

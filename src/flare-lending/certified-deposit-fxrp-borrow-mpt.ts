@@ -12,11 +12,8 @@ import {
   type Web2JsonProof,
 } from "../utils/fdc";
 import { getPersonalAccountAddress, type Call } from "../utils/smart-accounts";
-import {
-  DIRECT_MINT_AMOUNT_XRP,
-  MEMO_ONLY_AMOUNT_XRP,
-  sendBatch,
-} from "../utils/memo-instructions";
+import { MEMO_ONLY_AMOUNT_XRP, sendMemoFieldInstruction } from "../utils/memo-instructions";
+import { computeDirectMintingPaymentAmountXrp } from "../utils/direct-minting";
 import { findLatestInitiateBridgeEventInLast30Blocks, transferEventAmountMptToXrplAddress } from "./utils";
 
 async function prepareRequestBody(
@@ -144,6 +141,10 @@ async function validateUser(
 
 // NOTE:(Nik) For this example to work, you first need to faucet C2FLR to your personal account address.
 async function main() {
+  // Net FXRP amount to mint in XRP. Minting + executor fees are fetched from
+  // AssetManagerFXRP and added on top to form the XRPL payment amount.
+  const fxrpMintAmount = 10;
+
   const xrplClient = new Client(process.env.XRPL_TESTNET_RPC_URL!);
   const xrplWallet = Wallet.fromSeed(process.env.XRPL_SEED!);
   const vaultWallet = Wallet.fromSeed(process.env.VAULT_SEED!);
@@ -161,6 +162,11 @@ async function main() {
   console.log("Personal account address:", personalAccount, "\n");
 
   await validateUser(xrplWallet, personalAccount, dummyLendingAddress);
+
+  const paymentAmountXrp = await computeDirectMintingPaymentAmountXrp({
+    netMintAmountXrp: fxrpMintAmount,
+  });
+  console.log("Payment amount (XRP, net mint + fees):", paymentAmountXrp, "\n");
 
   // XRPL caps each memo at ~1024 bytes. The `approve` and `initiateBridge`
   // encodings are large enough that no 2-call combination fits except
@@ -219,16 +225,16 @@ async function main() {
     },
   ];
 
-  await sendBatch({
+  await sendMemoFieldInstruction({
     label: "approve-fxrp",
     calls: approveFxrpCalls,
-    amountXrp: DIRECT_MINT_AMOUNT_XRP,
+    amountXrp: paymentAmountXrp,
     personalAccount,
     xrplClient,
     xrplWallet,
   });
 
-  await sendBatch({
+  await sendMemoFieldInstruction({
     label: "deposit-and-borrow",
     calls: depositAndBorrowCalls,
     amountXrp: MEMO_ONLY_AMOUNT_XRP,
@@ -237,7 +243,7 @@ async function main() {
     xrplWallet,
   });
 
-  await sendBatch({
+  await sendMemoFieldInstruction({
     label: "approve-usdt",
     calls: approveUsdtCalls,
     amountXrp: MEMO_ONLY_AMOUNT_XRP,
@@ -246,7 +252,7 @@ async function main() {
     xrplWallet,
   });
 
-  await sendBatch({
+  await sendMemoFieldInstruction({
     label: "bridge",
     calls: bridgeCalls,
     amountXrp: MEMO_ONLY_AMOUNT_XRP,

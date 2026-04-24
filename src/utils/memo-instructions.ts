@@ -82,41 +82,12 @@ export function encodeExecuteUserOpMemo({
   return concatHex([header, encodedUserOp]);
 }
 
-export async function sendMemoInstruction({
-  memoData,
-  amountXrp,
-  xrplClient,
-  xrplWallet,
-}: {
-  memoData: `0x${string}`;
-  amountXrp: number;
-  xrplClient: Client;
-  xrplWallet: Wallet;
-}) {
-  const assetManagerAddress = await getContractAddressByName("AssetManagerFXRP");
-  const coreVaultXrplAddress = await getDirectMintingPaymentAddress(assetManagerAddress);
-
-  return sendXrplPayment({
-    destination: coreVaultXrplAddress,
-    amount: amountXrp,
-    memos: [{ Memo: { MemoData: memoData.slice(2) } }],
-    wallet: xrplWallet,
-    client: xrplClient,
-  });
-}
-
-// The XRPL payment that carries this memo also direct-mints FXRP to the personal
-// account (minus the executor fee in UBA). This amount must cover the mint value.
-// If the memo instruction reverts (e.g. nonce mismatch), the whole mintedFAssets
-// call reverts — the XRPL payment is consumed but no FAssets are minted. Recovery
-// is via the 0xE0 ignore-memo instruction on a subsequent payment.
-export const DIRECT_MINT_AMOUNT_XRP = 10;
 // Amount used for subsequent batches that don't need more FXRP but still have to
 // travel through the direct-minting flow. Keep it just above the minimum mint +
 // executor fee. Tune down if your deployment allows a smaller floor.
 export const MEMO_ONLY_AMOUNT_XRP = 1;
 
-export async function sendBatch({
+export async function sendMemoFieldInstruction({
   label,
   calls,
   amountXrp,
@@ -144,11 +115,15 @@ export async function sendBatch({
     nonce,
   });
 
-  const transaction = await sendMemoInstruction({
-    memoData,
-    amountXrp,
-    xrplClient,
-    xrplWallet,
+  const assetManagerAddress = await getContractAddressByName("AssetManagerFXRP");
+  const coreVaultXrplAddress = await getDirectMintingPaymentAddress(assetManagerAddress);
+
+  const transaction = await sendXrplPayment({
+    destination: coreVaultXrplAddress,
+    amount: amountXrp,
+    memos: [{ Memo: { MemoData: memoData.slice(2) } }],
+    wallet: xrplWallet,
+    client: xrplClient,
   });
   console.log(`[${label}] XRPL transaction hash:`, transaction.result.hash, "\n");
 

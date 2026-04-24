@@ -7,13 +7,11 @@ import { getContractAddressByName } from "./utils/flare-contract-registry";
 import { getFxrpBalance } from "./utils/fassets";
 import { abi as iMintingTagManagerAbi } from "./abis/IMintingTagManager";
 import {
+  computeDirectMintingPaymentAmountXrp,
   getDirectMintingPaymentAddress,
   getMintingTagManagerAddress,
   waitForDirectMintingExecuted,
 } from "./utils/direct-minting";
-
-// Amount in XRP to send for direct minting (must cover minted value + minting fee + executor fee)
-const DIRECT_MINT_AMOUNT_XRP = 10;
 
 async function reserveTag(mintingTagManagerAddress: Address): Promise<bigint> {
   const reservationFee = await publicClient.readContract({
@@ -87,6 +85,10 @@ async function getOrReserveTag(
 }
 
 async function main() {
+  // Net FXRP amount to mint in XRP. Minting + executor fees are fetched from
+  // AssetManagerFXRP and added on top to form the XRPL payment amount.
+  const fxrpMintAmount = 10;
+
   const xrplClient = new Client(process.env.XRPL_TESTNET_RPC_URL!);
   const xrplWallet = Wallet.fromSeed(process.env.XRPL_SEED!);
 
@@ -104,17 +106,19 @@ async function main() {
   const configuredRecipient = await getMintingRecipient(mintingTagManagerAddress, tag);
   console.log("Minting recipient for tag:", configuredRecipient, "\n");
 
-  const [coreVaultXrplAddress, initialBalance] = await Promise.all([
+  const [coreVaultXrplAddress, initialBalance, paymentAmountXrp] = await Promise.all([
     getDirectMintingPaymentAddress(assetManagerAddress),
     getFxrpBalance(personalAccountAddress),
+    computeDirectMintingPaymentAmountXrp({ netMintAmountXrp: fxrpMintAmount }),
   ]);
   console.log("Core Vault XRPL address:", coreVaultXrplAddress, "\n");
   console.log("AssetManagerFXRP address:", assetManagerAddress, "\n");
   console.log("Initial FXRP balance:", initialBalance, "\n");
+  console.log("Payment amount (XRP, net mint + fees):", paymentAmountXrp, "\n");
 
   const transaction = await sendXrplPayment({
     destination: coreVaultXrplAddress,
-    amount: DIRECT_MINT_AMOUNT_XRP,
+    amount: paymentAmountXrp,
     destinationTag: Number(tag),
     wallet: xrplWallet,
     client: xrplClient,

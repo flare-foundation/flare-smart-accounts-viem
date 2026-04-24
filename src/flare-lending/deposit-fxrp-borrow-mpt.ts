@@ -5,15 +5,16 @@ import { abi as BridgeAbi } from "../abis/DummyBridge";
 import { abi as LendingAbi } from "../abis/DummyLending";
 import { abi as ERC20Abi } from "../abis/ERC20";
 import { getPersonalAccountAddress, type Call } from "../utils/smart-accounts";
-import {
-  DIRECT_MINT_AMOUNT_XRP,
-  MEMO_ONLY_AMOUNT_XRP,
-  sendBatch,
-} from "../utils/memo-instructions";
+import { MEMO_ONLY_AMOUNT_XRP, sendMemoFieldInstruction } from "../utils/memo-instructions";
+import { computeDirectMintingPaymentAmountXrp } from "../utils/direct-minting";
 import { findLatestInitiateBridgeEventInLast30Blocks, transferEventAmountMptToXrplAddress } from "./utils";
 
 // NOTE:(Nik) For this example to work, you first need to faucet C2FLR to your personal account address.
 async function main() {
+  // Net FXRP amount to mint in XRP. Minting + executor fees are fetched from
+  // AssetManagerFXRP and added on top to form the XRPL payment amount.
+  const fxrpMintAmount = 10;
+
   const xrplClient = new Client(process.env.XRPL_TESTNET_RPC_URL!);
   const xrplWallet = Wallet.fromSeed(process.env.XRPL_SEED!);
   const vaultWallet = Wallet.fromSeed(process.env.VAULT_SEED!);
@@ -84,19 +85,23 @@ async function main() {
     },
   ];
 
-  const personalAccount = await getPersonalAccountAddress(xrplWallet.address);
+  const [personalAccount, paymentAmountXrp] = await Promise.all([
+    getPersonalAccountAddress(xrplWallet.address),
+    computeDirectMintingPaymentAmountXrp({ netMintAmountXrp: fxrpMintAmount }),
+  ]);
   console.log("Personal account address:", personalAccount, "\n");
+  console.log("Payment amount (XRP, net mint + fees):", paymentAmountXrp, "\n");
 
-  await sendBatch({
+  await sendMemoFieldInstruction({
     label: "approve-fxrp",
     calls: approveFxrpCalls,
-    amountXrp: DIRECT_MINT_AMOUNT_XRP,
+    amountXrp: paymentAmountXrp,
     personalAccount,
     xrplClient,
     xrplWallet,
   });
 
-  await sendBatch({
+  await sendMemoFieldInstruction({
     label: "deposit-and-borrow",
     calls: depositAndBorrowCalls,
     amountXrp: MEMO_ONLY_AMOUNT_XRP,
@@ -105,7 +110,7 @@ async function main() {
     xrplWallet,
   });
 
-  await sendBatch({
+  await sendMemoFieldInstruction({
     label: "approve-usdt",
     calls: approveUsdtCalls,
     amountXrp: MEMO_ONLY_AMOUNT_XRP,
@@ -114,7 +119,7 @@ async function main() {
     xrplWallet,
   });
 
-  await sendBatch({
+  await sendMemoFieldInstruction({
     label: "bridge",
     calls: bridgeCalls,
     amountXrp: MEMO_ONLY_AMOUNT_XRP,

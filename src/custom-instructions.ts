@@ -4,14 +4,15 @@ import { abi as checkpointAbi } from "./abis/Checkpoint";
 import { abi as piggyBankAbi } from "./abis/PiggyBank";
 import { abi as noticeBoardAbi } from "./abis/NoticeBoard";
 import { getPersonalAccountAddress, type Call } from "./utils/smart-accounts";
-import {
-  DIRECT_MINT_AMOUNT_XRP,
-  MEMO_ONLY_AMOUNT_XRP,
-  sendBatch,
-} from "./utils/memo-instructions";
+import { MEMO_ONLY_AMOUNT_XRP, sendMemoFieldInstruction } from "./utils/memo-instructions";
+import { computeDirectMintingPaymentAmountXrp } from "./utils/direct-minting";
 
 // NOTE:(Nik) For this example to work, you first need to faucet C2FLR to your personal account address.
 async function main() {
+  // Net FXRP amount to mint in XRP. Minting + executor fees are fetched from
+  // AssetManagerFXRP and added on top to form the XRPL payment amount.
+  const fxrpMintAmount = 10;
+
   const checkpointAddress = "0xEE6D54382aA623f4D16e856193f5f8384E487002";
   const piggyBankAddress = "0x42Ccd4F0aB1C6Fa36BfA37C9e30c4DC4DD94dE42";
   const noticeBoardAddress = "0x59D57652BF4F6d97a6e555800b3920Bd775661Dc";
@@ -57,19 +58,23 @@ async function main() {
   const xrplClient = new Client(process.env.XRPL_TESTNET_RPC_URL!);
   const xrplWallet = Wallet.fromSeed(process.env.XRPL_SEED!);
 
-  const personalAccount = await getPersonalAccountAddress(xrplWallet.address);
+  const [personalAccount, paymentAmountXrp] = await Promise.all([
+    getPersonalAccountAddress(xrplWallet.address),
+    computeDirectMintingPaymentAmountXrp({ netMintAmountXrp: fxrpMintAmount }),
+  ]);
   console.log("Personal account address:", personalAccount, "\n");
+  console.log("Payment amount (XRP, net mint + fees):", paymentAmountXrp, "\n");
 
-  await sendBatch({
+  await sendMemoFieldInstruction({
     label: "checkpoint-and-deposit",
     calls: checkpointAndDepositCalls,
-    amountXrp: DIRECT_MINT_AMOUNT_XRP,
+    amountXrp: paymentAmountXrp,
     personalAccount,
     xrplClient,
     xrplWallet,
   });
 
-  await sendBatch({
+  await sendMemoFieldInstruction({
     label: "pin-notice",
     calls: pinNoticeCalls,
     amountXrp: MEMO_ONLY_AMOUNT_XRP,

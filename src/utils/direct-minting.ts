@@ -1,6 +1,8 @@
 import type { Address } from "viem";
 import { coston2 } from "@flarenetwork/flare-wagmi-periphery-package";
+import { dropsToXrp, xrpToDrops } from "xrpl";
 import { publicClient } from "./client";
+import { getContractAddressByName } from "./flare-contract-registry";
 import type { DirectMintingExecutedEventType } from "./event-types";
 
 export async function getDirectMintingPaymentAddress(
@@ -21,6 +23,38 @@ export async function getMintingTagManagerAddress(
     abi: coston2.iDirectMintingSettingsAbi,
     functionName: "getMintingTagManager",
   }));
+}
+
+export async function computeDirectMintingPaymentAmountXrp({
+  netMintAmountXrp,
+}: {
+  netMintAmountXrp: number;
+}): Promise<number> {
+  const assetManagerAddress = await getContractAddressByName("AssetManagerFXRP");
+  const [executorFeeUBA, feeBIPS, minimumFeeUBA] = await Promise.all([
+    publicClient.readContract({
+      address: assetManagerAddress,
+      abi: coston2.iDirectMintingSettingsAbi,
+      functionName: "getDirectMintingExecutorFeeUBA",
+    }),
+    publicClient.readContract({
+      address: assetManagerAddress,
+      abi: coston2.iDirectMintingSettingsAbi,
+      functionName: "getDirectMintingFeeBIPS",
+    }),
+    publicClient.readContract({
+      address: assetManagerAddress,
+      abi: coston2.iDirectMintingSettingsAbi,
+      functionName: "getDirectMintingMinimumFeeUBA",
+    }),
+  ]);
+
+  const netMintUBA = BigInt(xrpToDrops(netMintAmountXrp));
+  const proportionalFeeUBA = (netMintUBA * feeBIPS) / 10_000n;
+  const mintingFeeUBA = proportionalFeeUBA > minimumFeeUBA ? proportionalFeeUBA : minimumFeeUBA;
+  const totalUBA = netMintUBA + mintingFeeUBA + executorFeeUBA;
+
+  return Number(dropsToXrp(totalUBA.toString()));
 }
 
 export function waitForDirectMintingExecuted({

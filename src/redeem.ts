@@ -2,30 +2,27 @@ import { encodeFunctionData, zeroAddress } from "viem";
 import { Client, Wallet } from "xrpl";
 import { coston2 } from "@flarenetwork/flare-wagmi-periphery-package";
 import { getPersonalAccountAddress, type Call } from "./utils/smart-accounts";
-import {
-  encodeExecuteUserOpMemo,
-  getNonce,
-  sendMemoInstruction,
-  waitForUserOperationExecuted,
-} from "./utils/memo-instructions";
+import { sendMemoFieldInstruction } from "./utils/memo-instructions";
 import { getContractAddressByName } from "./utils/flare-contract-registry";
-
-// The XRPL payment that carries this memo also direct-mints FXRP to the personal
-// account. This amount must cover the mint value plus any executor fee.
-const DIRECT_MINT_AMOUNT_XRP = 10;
+import { computeDirectMintingPaymentAmountXrp } from "./utils/direct-minting";
 
 const LOTS_TO_REDEEM = 1n;
 
 async function main() {
+  // Net FXRP amount to mint in XRP. Minting + executor fees are fetched from
+  // AssetManagerFXRP and added on top to form the XRPL payment amount.
+  const fxrpMintAmount = 10;
+
   const xrplClient = new Client(process.env.XRPL_TESTNET_RPC_URL!);
   const xrplWallet = Wallet.fromSeed(process.env.XRPL_SEED!);
 
-  const personalAccount = await getPersonalAccountAddress(xrplWallet.address);
+  const [personalAccount, assetManagerFXRPAddress] = await Promise.all([
+    getPersonalAccountAddress(xrplWallet.address),
+    getContractAddressByName("AssetManagerFXRP"),
+  ]);
   console.log("Personal account address:", personalAccount, "\n");
 
-  const assetManagerFXRPAddress = await getContractAddressByName("AssetManagerFXRP");
-
-  const calls: Call[] = [
+  const redeemCalls: Call[] = [
     {
       target: assetManagerFXRPAddress,
       value: 0n,
@@ -36,30 +33,20 @@ async function main() {
       }),
     },
   ];
-  console.log("Calls:", calls, "\n");
 
-  const nonce = await getNonce(personalAccount);
-  console.log("Current nonce:", nonce, "\n");
-
-  const memoData = encodeExecuteUserOpMemo({
-    calls,
-    walletId: 0,
-    executorFeeUBA: 0n,
-    sender: personalAccount,
-    nonce,
+  const paymentAmountXrp = await computeDirectMintingPaymentAmountXrp({
+    netMintAmountXrp: fxrpMintAmount,
   });
-  console.log("Memo data:", memoData, "\n");
+  console.log("Payment amount (XRP, net mint + fees):", paymentAmountXrp, "\n");
 
-  const transaction = await sendMemoInstruction({
-    memoData,
-    amountXrp: DIRECT_MINT_AMOUNT_XRP,
+  await sendMemoFieldInstruction({
+    label: "redeem",
+    calls: redeemCalls,
+    amountXrp: paymentAmountXrp,
+    personalAccount,
     xrplClient,
     xrplWallet,
   });
-  console.log("XRPL transaction hash:", transaction.result.hash, "\n");
-
-  const event = await waitForUserOperationExecuted({ personalAccount, nonce });
-  console.log("UserOperationExecuted event:", event, "\n");
 }
 
 void main()
