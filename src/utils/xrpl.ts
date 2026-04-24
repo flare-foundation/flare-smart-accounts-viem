@@ -10,7 +10,14 @@ export type SendXrplPaymentInputType = {
   client: Client;
 };
 
-export async function sendXrplPayment({ destination, memos, destinationTag, amount, wallet, client }: SendXrplPaymentInputType) {
+export async function sendXrplPayment({
+  destination,
+  memos,
+  destinationTag,
+  amount,
+  wallet,
+  client,
+}: SendXrplPaymentInputType) {
   await client.connect();
 
   const preparedTransaction = await client.autofill({

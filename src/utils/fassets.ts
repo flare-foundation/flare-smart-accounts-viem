@@ -2,11 +2,7 @@ import { type Address, erc20Abi } from "viem";
 import { coston2 } from "@flarenetwork/flare-wagmi-periphery-package";
 import { dropsToXrp, xrpToDrops } from "xrpl";
 import { publicClient } from "./client";
-import {
-  getAssetManagerFXRPAddress,
-  getContractAddressByName,
-  getFxrpAddress,
-} from "./flare-contract-registry";
+import { getAssetManagerFXRPAddress, getContractAddressByName, getFxrpAddress } from "./flare-contract-registry";
 import type { DirectMintingExecutedEventType } from "./event-types";
 
 export async function getFxrpBalance(address: Address) {

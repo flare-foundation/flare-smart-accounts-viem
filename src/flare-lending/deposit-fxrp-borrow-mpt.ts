@@ -4,11 +4,7 @@ import { MPT_ISSUANCE_ID } from "./config";
 import { abi as BridgeAbi } from "../abis/DummyBridge";
 import { abi as LendingAbi } from "../abis/DummyLending";
 import { abi as ERC20Abi } from "../abis/ERC20";
-import {
-  getPersonalAccountAddress,
-  sendMemoFieldInstruction,
-  type Call,
-} from "../utils/smart-accounts";
+import { getPersonalAccountAddress, sendMemoFieldInstruction, type Call } from "../utils/smart-accounts";
 import { computeDirectMintingPaymentAmountXrp } from "../utils/fassets";
 import { findLatestInitiateBridgeEventInLast30Blocks, transferEventAmountMptToXrplAddress } from "./utils";
 

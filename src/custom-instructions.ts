@@ -3,11 +3,7 @@ import { Client, Wallet } from "xrpl";
 import { abi as checkpointAbi } from "./abis/Checkpoint";
 import { abi as piggyBankAbi } from "./abis/PiggyBank";
 import { abi as noticeBoardAbi } from "./abis/NoticeBoard";
-import {
-  getPersonalAccountAddress,
-  sendMemoFieldInstruction,
-  type Call,
-} from "./utils/smart-accounts";
+import { getPersonalAccountAddress, sendMemoFieldInstruction, type Call } from "./utils/smart-accounts";
 import { computeDirectMintingPaymentAmountXrp } from "./utils/fassets";
 
 // NOTE:(Nik) For this example to work, you first need to faucet C2FLR to your personal account address.

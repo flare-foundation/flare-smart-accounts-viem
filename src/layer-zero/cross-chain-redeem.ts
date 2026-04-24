@@ -2,12 +2,7 @@ import { encodeAbiParameters, formatUnits, pad, type Address } from "viem";
 import { Options } from "@layerzerolabs/lz-v2-utilities";
 import { EndpointId } from "@layerzerolabs/lz-definitions";
 import { coston2 } from "@flarenetwork/flare-wagmi-periphery-package";
-import {
-  account,
-  sepoliaPublicClient,
-  sepoliaWalletClient,
-  publicClient,
-} from "../utils/client";
+import { account, sepoliaPublicClient, sepoliaWalletClient, publicClient } from "../utils/client";
 import { abi as fxrpOftAbi } from "../abis/FXRPOFT";
 import { calculateAmountToSend } from "../utils/fassets";
 import { getAssetManagerFXRPAddress } from "../utils/flare-contract-registry";
@@ -15,8 +10,7 @@ import type { SendParam } from "./types";
 
 const CONFIG = {
   SEPOLIA_FXRP_OFT: process.env.SEPOLIA_FXRP_OFT as Address | undefined,
-  COSTON2_COMPOSER: (process.env.COSTON2_COMPOSER ??
-    "0x5051E8db650E9e0E2a3f03010Ee5c60e79CF583E") as Address,
+  COSTON2_COMPOSER: (process.env.COSTON2_COMPOSER ?? "0x5051E8db650E9e0E2a3f03010Ee5c60e79CF583E") as Address,
   COSTON2_EID: EndpointId.FLARE_V2_TESTNET,
   EXECUTOR_GAS: 1_000_000,
   COMPOSE_GAS: 1_000_000,
@@ -27,14 +21,10 @@ const CONFIG = {
 const REDEMPTION_TIMEOUT_MS = 5 * 60 * 1000;
 const REDEMPTION_POLL_INTERVAL_MS = 10_000;
 
-function encodeComposeMessage(
-  amountToSend: bigint,
-  underlyingAddress: string,
-  redeemer: Address,
-): `0x${string}` {
+function encodeComposeMessage(amountToSend: bigint, underlyingAddress: string, redeemer: Address): `0x${string}` {
   return encodeAbiParameters(
     [{ type: "uint256" }, { type: "string" }, { type: "address" }],
-    [amountToSend, underlyingAddress, redeemer],
+    [amountToSend, underlyingAddress, redeemer]
   );
 }
 
@@ -45,11 +35,7 @@ function buildComposeOptions(): `0x${string}` {
     .toHex() as `0x${string}`;
 }
 
-function buildSendParam(
-  amountToSend: bigint,
-  composeMsg: `0x${string}`,
-  extraOptions: `0x${string}`,
-): SendParam {
+function buildSendParam(amountToSend: bigint, composeMsg: `0x${string}`, extraOptions: `0x${string}`): SendParam {
   return {
     dstEid: CONFIG.COSTON2_EID,
     to: pad(CONFIG.COSTON2_COMPOSER, { size: 32 }),
@@ -61,12 +47,7 @@ function buildSendParam(
   };
 }
 
-async function checkBalance(
-  oftAddress: Address,
-  signerAddress: Address,
-  amountToSend: bigint,
-  decimals: number,
-) {
+async function checkBalance(oftAddress: Address, signerAddress: Address, amountToSend: bigint, decimals: number) {
   const balance = await sepoliaPublicClient.readContract({
     address: oftAddress,
     abi: fxrpOftAbi,
@@ -100,7 +81,7 @@ async function executeSendAndRedeem(
   nativeFee: bigint,
   lzTokenFee: bigint,
   signerAddress: Address,
-  underlyingAddress: string,
+  underlyingAddress: string
 ) {
   const { request } = await sepoliaPublicClient.simulateContract({
     account,
@@ -182,21 +163,10 @@ async function main() {
 
   const { nativeFee, lzTokenFee } = await quoteFee(oftAddress, sendParam);
 
-  console.log(
-    "\nSending",
-    formatUnits(amountToSend, decimals),
-    "FXRP to Coston2 with auto-redeem...",
-  );
+  console.log("\nSending", formatUnits(amountToSend, decimals), "FXRP to Coston2 with auto-redeem...");
   console.log("Target composer:", CONFIG.COSTON2_COMPOSER);
 
-  await executeSendAndRedeem(
-    oftAddress,
-    sendParam,
-    nativeFee,
-    lzTokenFee,
-    signerAddress,
-    CONFIG.XRP_ADDRESS,
-  );
+  await executeSendAndRedeem(oftAddress, sendParam, nativeFee, lzTokenFee, signerAddress, CONFIG.XRP_ADDRESS);
 
   const redemptionEvent = await waitForRedemptionOnCoston2(startBlock);
   console.log("\nRedemptionRequested event observed on Coston2:");

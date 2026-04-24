@@ -1,11 +1,7 @@
 import { encodeFunctionData, erc20Abi, formatUnits, type Address } from "viem";
 import { Client, Wallet, xrpToDrops } from "xrpl";
 import { account, publicClient, sepoliaPublicClient } from "../utils/client";
-import {
-  getPersonalAccountAddress,
-  sendMemoFieldInstruction,
-  type Call,
-} from "../utils/smart-accounts";
+import { getPersonalAccountAddress, sendMemoFieldInstruction, type Call } from "../utils/smart-accounts";
 import { computeDirectMintingPaymentAmountXrp, getFxrpDecimals } from "../utils/fassets";
 import { getFxrpAddress } from "../utils/flare-contract-registry";
 import { abi as fxrpLzBridgeShimAbi } from "../abis/FxrpLzBridgeShim";
@@ -44,9 +40,7 @@ async function waitForOftReceivedOnSepolia({
     }
     await new Promise((resolve) => setTimeout(resolve, SEPOLIA_ARRIVAL_POLL_INTERVAL_MS));
   }
-  throw new Error(
-    `OFTReceived event not observed on Sepolia within ${SEPOLIA_ARRIVAL_TIMEOUT_MS}ms`,
-  );
+  throw new Error(`OFTReceived event not observed on Sepolia within ${SEPOLIA_ARRIVAL_TIMEOUT_MS}ms`);
 }
 
 // NOTE:(Nik) For this example to work, you first need to faucet C2FLR to your personal account address.
@@ -58,14 +52,10 @@ async function waitForOftReceivedOnSepolia({
 //   executorGas=200000
 async function main() {
   if (!CONFIG.FXRP_LZ_BRIDGE_SHIM) {
-    throw new Error(
-      "FXRP_LZ_BRIDGE_SHIM env var is required (address of the deployed FxrpLzBridgeShim)",
-    );
+    throw new Error("FXRP_LZ_BRIDGE_SHIM env var is required (address of the deployed FxrpLzBridgeShim)");
   }
   if (!CONFIG.SEPOLIA_FXRP_OFT) {
-    throw new Error(
-      "SEPOLIA_FXRP_OFT env var is required (address of the FXRP OFT on Sepolia)",
-    );
+    throw new Error("SEPOLIA_FXRP_OFT env var is required (address of the FXRP OFT on Sepolia)");
   }
   const shim = CONFIG.FXRP_LZ_BRIDGE_SHIM;
   const sepoliaOft = CONFIG.SEPOLIA_FXRP_OFT;
@@ -74,16 +64,15 @@ async function main() {
   const xrplWallet = Wallet.fromSeed(process.env.XRPL_SEED!);
   const recipient = account.address;
 
-  const [personalAccount, fxrpAddress, fxrpDecimals, paymentAmountXrp, memoOnlyAmountXrp] =
-    await Promise.all([
-      getPersonalAccountAddress(xrplWallet.address),
-      getFxrpAddress(),
-      getFxrpDecimals(),
-      computeDirectMintingPaymentAmountXrp({
-        netMintAmountXrp: CONFIG.FXRP_MINT_AMOUNT_XRP,
-      }),
-      computeDirectMintingPaymentAmountXrp({ netMintAmountXrp: 0 }),
-    ]);
+  const [personalAccount, fxrpAddress, fxrpDecimals, paymentAmountXrp, memoOnlyAmountXrp] = await Promise.all([
+    getPersonalAccountAddress(xrplWallet.address),
+    getFxrpAddress(),
+    getFxrpDecimals(),
+    computeDirectMintingPaymentAmountXrp({
+      netMintAmountXrp: CONFIG.FXRP_MINT_AMOUNT_XRP,
+    }),
+    computeDirectMintingPaymentAmountXrp({ netMintAmountXrp: 0 }),
+  ]);
 
   const amountToBridge = BigInt(xrpToDrops(CONFIG.FXRP_MINT_AMOUNT_XRP));
 
@@ -165,11 +154,7 @@ async function main() {
 
   console.log("\nFXRP arrived on Sepolia:");
   console.log("  Tx hash:", arrivalEvent.transactionHash);
-  console.log(
-    "  Amount received:",
-    formatUnits(arrivalEvent.args.amountReceivedLD, fxrpDecimals),
-    "FXRP",
-  );
+  console.log("  Amount received:", formatUnits(arrivalEvent.args.amountReceivedLD, fxrpDecimals), "FXRP");
   console.log("  Recipient:", arrivalEvent.args.toAddress);
 }
 

@@ -8,11 +8,7 @@ import {
   getDirectMintingPaymentAddress,
   getMintingTagManagerAddress,
 } from "./utils/flare-contract-registry";
-import {
-  computeDirectMintingPaymentAmountXrp,
-  getFxrpBalance,
-  waitForDirectMintingExecuted,
-} from "./utils/fassets";
+import { computeDirectMintingPaymentAmountXrp, getFxrpBalance, waitForDirectMintingExecuted } from "./utils/fassets";
 import { abi as iMintingTagManagerAbi } from "./abis/IMintingTagManager";
 
 async function reserveTag(mintingTagManagerAddress: Address): Promise<bigint> {
@@ -40,11 +36,7 @@ async function reserveTag(mintingTagManagerAddress: Address): Promise<bigint> {
   return tag;
 }
 
-async function setMintingRecipient(
-  mintingTagManagerAddress: Address,
-  tag: bigint,
-  recipient: Address,
-): Promise<void> {
+async function setMintingRecipient(mintingTagManagerAddress: Address, tag: bigint, recipient: Address): Promise<void> {
   const { request } = await publicClient.simulateContract({
     account,
     address: mintingTagManagerAddress,
@@ -58,10 +50,7 @@ async function setMintingRecipient(
   console.log("Set minting recipient for tag", tag, "to", recipient, "\n");
 }
 
-async function getMintingRecipient(
-  mintingTagManagerAddress: Address,
-  tag: bigint,
-): Promise<Address> {
+async function getMintingRecipient(mintingTagManagerAddress: Address, tag: bigint): Promise<Address> {
   return publicClient.readContract({
     address: mintingTagManagerAddress,
     abi: iMintingTagManagerAbi,
@@ -70,10 +59,7 @@ async function getMintingRecipient(
   }) as Promise<Address>;
 }
 
-async function getOrReserveTag(
-  mintingTagManagerAddress: Address,
-  recipient: Address,
-): Promise<bigint> {
+async function getOrReserveTag(mintingTagManagerAddress: Address, recipient: Address): Promise<bigint> {
   if (process.env.MINTING_TAG) {
     const tag = BigInt(process.env.MINTING_TAG);
     console.log("Using existing minting tag from .env:", tag, "\n");

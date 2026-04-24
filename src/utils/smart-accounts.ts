@@ -33,7 +33,6 @@ export async function getPersonalAccountAddress(xrplAddress: string) {
   return personalAccountAddress;
 }
 
-
 export async function getXrplAccountForAddress(evmAddress: Address): Promise<`0x${string}`> {
   const xrplOwner = await publicClient.readContract({
     address: evmAddress,
@@ -180,15 +179,11 @@ export function encodeExecuteUserOpMemo({
         paymasterAndData: "0x",
         signature: "0x",
       },
-    ],
+    ]
   );
 
   // 10-byte header: 0xFF | walletId (1B) | executorFee (8B, big-endian)
-  const header = concatHex([
-    "0xff",
-    toHex(walletId, { size: 1 }),
-    toHex(executorFeeUBA, { size: 8 }),
-  ]);
+  const header = concatHex(["0xff", toHex(walletId, { size: 1 }), toHex(executorFeeUBA, { size: 8 })]);
 
   return concatHex([header, encodedUserOp]);
 }

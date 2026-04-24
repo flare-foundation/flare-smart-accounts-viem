@@ -11,11 +11,7 @@ import {
   submitAttestationRequest,
   type Web2JsonProof,
 } from "../utils/fdc";
-import {
-  getPersonalAccountAddress,
-  sendMemoFieldInstruction,
-  type Call,
-} from "../utils/smart-accounts";
+import { getPersonalAccountAddress, sendMemoFieldInstruction, type Call } from "../utils/smart-accounts";
 import { computeDirectMintingPaymentAmountXrp } from "../utils/fassets";
 import { findLatestInitiateBridgeEventInLast30Blocks, transferEventAmountMptToXrplAddress } from "./utils";
 

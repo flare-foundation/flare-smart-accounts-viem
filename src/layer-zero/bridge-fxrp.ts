@@ -3,11 +3,7 @@ import { Options } from "@layerzerolabs/lz-v2-utilities";
 import { EndpointId } from "@layerzerolabs/lz-definitions";
 import { account, publicClient, walletClient } from "../utils/client";
 import { abi as fxrpOftAbi } from "../abis/FXRPOFT";
-import {
-  calculateAmountToSend,
-  getFxrpBalance,
-  getFxrpDecimals,
-} from "../utils/fassets";
+import { calculateAmountToSend, getFxrpBalance, getFxrpDecimals } from "../utils/fassets";
 import { getFxrpAddress } from "../utils/flare-contract-registry";
 import type { SendParam } from "./types";
 

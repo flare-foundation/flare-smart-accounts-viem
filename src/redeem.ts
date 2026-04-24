@@ -1,11 +1,7 @@
 import { encodeFunctionData, zeroAddress } from "viem";
 import { Client, Wallet } from "xrpl";
 import { coston2 } from "@flarenetwork/flare-wagmi-periphery-package";
-import {
-  getPersonalAccountAddress,
-  sendMemoFieldInstruction,
-  type Call,
-} from "./utils/smart-accounts";
+import { getPersonalAccountAddress, sendMemoFieldInstruction, type Call } from "./utils/smart-accounts";
 import { getContractAddressByName } from "./utils/flare-contract-registry";
 import { computeDirectMintingPaymentAmountXrp } from "./utils/fassets";
 
