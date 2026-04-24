@@ -2,13 +2,15 @@ import { Client, Wallet } from "xrpl";
 import type { Address } from "viem";
 import { sendXrplPayment } from "./utils/xrpl";
 import { getPersonalAccountAddress } from "./utils/smart-accounts";
-import { getContractAddressByName } from "./utils/flare-contract-registry";
-import { getFxrpBalance } from "./utils/fassets";
+import {
+  getContractAddressByName,
+  getDirectMintingPaymentAddress,
+} from "./utils/flare-contract-registry";
 import {
   computeDirectMintingPaymentAmountXrp,
-  getDirectMintingPaymentAddress,
+  getFxrpBalance,
   waitForDirectMintingExecuted,
-} from "./utils/direct-minting";
+} from "./utils/fassets";
 
 // The memo is a packed 32-byte PaymentReference (see AssetManager's PaymentReference.sol):
 //   [ 8-byte type tag | 4 zero bytes | 20-byte recipient address ]

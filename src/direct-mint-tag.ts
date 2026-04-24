@@ -3,15 +3,17 @@ import type { Address } from "viem";
 import { sendXrplPayment } from "./utils/xrpl";
 import { account, publicClient, walletClient } from "./utils/client";
 import { getPersonalAccountAddress } from "./utils/smart-accounts";
-import { getContractAddressByName } from "./utils/flare-contract-registry";
-import { getFxrpBalance } from "./utils/fassets";
-import { abi as iMintingTagManagerAbi } from "./abis/IMintingTagManager";
 import {
-  computeDirectMintingPaymentAmountXrp,
+  getContractAddressByName,
   getDirectMintingPaymentAddress,
   getMintingTagManagerAddress,
+} from "./utils/flare-contract-registry";
+import {
+  computeDirectMintingPaymentAmountXrp,
+  getFxrpBalance,
   waitForDirectMintingExecuted,
-} from "./utils/direct-minting";
+} from "./utils/fassets";
+import { abi as iMintingTagManagerAbi } from "./abis/IMintingTagManager";
 
 async function reserveTag(mintingTagManagerAddress: Address): Promise<bigint> {
   const reservationFee = await publicClient.readContract({

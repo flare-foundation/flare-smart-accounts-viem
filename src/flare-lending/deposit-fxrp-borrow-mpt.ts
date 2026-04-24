@@ -4,9 +4,12 @@ import { MPT_ISSUANCE_ID } from "./config";
 import { abi as BridgeAbi } from "../abis/DummyBridge";
 import { abi as LendingAbi } from "../abis/DummyLending";
 import { abi as ERC20Abi } from "../abis/ERC20";
-import { getPersonalAccountAddress, type Call } from "../utils/smart-accounts";
-import { MEMO_ONLY_AMOUNT_XRP, sendMemoFieldInstruction } from "../utils/memo-instructions";
-import { computeDirectMintingPaymentAmountXrp } from "../utils/direct-minting";
+import {
+  getPersonalAccountAddress,
+  sendMemoFieldInstruction,
+  type Call,
+} from "../utils/smart-accounts";
+import { computeDirectMintingPaymentAmountXrp } from "../utils/fassets";
 import { findLatestInitiateBridgeEventInLast30Blocks, transferEventAmountMptToXrplAddress } from "./utils";
 
 // NOTE:(Nik) For this example to work, you first need to faucet C2FLR to your personal account address.
@@ -85,12 +88,14 @@ async function main() {
     },
   ];
 
-  const [personalAccount, paymentAmountXrp] = await Promise.all([
+  const [personalAccount, paymentAmountXrp, memoOnlyAmountXrp] = await Promise.all([
     getPersonalAccountAddress(xrplWallet.address),
     computeDirectMintingPaymentAmountXrp({ netMintAmountXrp: fxrpMintAmount }),
+    computeDirectMintingPaymentAmountXrp({ netMintAmountXrp: 0 }),
   ]);
   console.log("Personal account address:", personalAccount, "\n");
   console.log("Payment amount (XRP, net mint + fees):", paymentAmountXrp, "\n");
+  console.log("Memo-only amount (XRP, fees only):", memoOnlyAmountXrp, "\n");
 
   await sendMemoFieldInstruction({
     label: "approve-fxrp",
@@ -104,7 +109,7 @@ async function main() {
   await sendMemoFieldInstruction({
     label: "deposit-and-borrow",
     calls: depositAndBorrowCalls,
-    amountXrp: MEMO_ONLY_AMOUNT_XRP,
+    amountXrp: memoOnlyAmountXrp,
     personalAccount,
     xrplClient,
     xrplWallet,
@@ -113,7 +118,7 @@ async function main() {
   await sendMemoFieldInstruction({
     label: "approve-usdt",
     calls: approveUsdtCalls,
-    amountXrp: MEMO_ONLY_AMOUNT_XRP,
+    amountXrp: memoOnlyAmountXrp,
     personalAccount,
     xrplClient,
     xrplWallet,
@@ -122,7 +127,7 @@ async function main() {
   await sendMemoFieldInstruction({
     label: "bridge",
     calls: bridgeCalls,
-    amountXrp: MEMO_ONLY_AMOUNT_XRP,
+    amountXrp: memoOnlyAmountXrp,
     personalAccount,
     xrplClient,
     xrplWallet,

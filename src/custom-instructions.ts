@@ -3,9 +3,12 @@ import { Client, Wallet } from "xrpl";
 import { abi as checkpointAbi } from "./abis/Checkpoint";
 import { abi as piggyBankAbi } from "./abis/PiggyBank";
 import { abi as noticeBoardAbi } from "./abis/NoticeBoard";
-import { getPersonalAccountAddress, type Call } from "./utils/smart-accounts";
-import { MEMO_ONLY_AMOUNT_XRP, sendMemoFieldInstruction } from "./utils/memo-instructions";
-import { computeDirectMintingPaymentAmountXrp } from "./utils/direct-minting";
+import {
+  getPersonalAccountAddress,
+  sendMemoFieldInstruction,
+  type Call,
+} from "./utils/smart-accounts";
+import { computeDirectMintingPaymentAmountXrp } from "./utils/fassets";
 
 // NOTE:(Nik) For this example to work, you first need to faucet C2FLR to your personal account address.
 async function main() {
@@ -58,12 +61,14 @@ async function main() {
   const xrplClient = new Client(process.env.XRPL_TESTNET_RPC_URL!);
   const xrplWallet = Wallet.fromSeed(process.env.XRPL_SEED!);
 
-  const [personalAccount, paymentAmountXrp] = await Promise.all([
+  const [personalAccount, paymentAmountXrp, memoOnlyAmountXrp] = await Promise.all([
     getPersonalAccountAddress(xrplWallet.address),
     computeDirectMintingPaymentAmountXrp({ netMintAmountXrp: fxrpMintAmount }),
+    computeDirectMintingPaymentAmountXrp({ netMintAmountXrp: 0 }),
   ]);
   console.log("Personal account address:", personalAccount, "\n");
   console.log("Payment amount (XRP, net mint + fees):", paymentAmountXrp, "\n");
+  console.log("Memo-only amount (XRP, fees only):", memoOnlyAmountXrp, "\n");
 
   await sendMemoFieldInstruction({
     label: "checkpoint-and-deposit",
@@ -77,7 +82,7 @@ async function main() {
   await sendMemoFieldInstruction({
     label: "pin-notice",
     calls: pinNoticeCalls,
-    amountXrp: MEMO_ONLY_AMOUNT_XRP,
+    amountXrp: memoOnlyAmountXrp,
     personalAccount,
     xrplClient,
     xrplWallet,

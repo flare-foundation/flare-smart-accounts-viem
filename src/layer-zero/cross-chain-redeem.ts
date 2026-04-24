@@ -9,7 +9,8 @@ import {
   publicClient,
 } from "../utils/client";
 import { abi as fxrpOftAbi } from "../abis/FXRPOFT";
-import { calculateAmountToSend, getAssetManagerFXRPAddress } from "../utils/fassets";
+import { calculateAmountToSend } from "../utils/fassets";
+import { getAssetManagerFXRPAddress } from "../utils/flare-contract-registry";
 import type { SendParam } from "./types";
 
 const CONFIG = {

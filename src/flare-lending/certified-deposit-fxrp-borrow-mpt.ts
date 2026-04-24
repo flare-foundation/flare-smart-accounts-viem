@@ -11,9 +11,12 @@ import {
   submitAttestationRequest,
   type Web2JsonProof,
 } from "../utils/fdc";
-import { getPersonalAccountAddress, type Call } from "../utils/smart-accounts";
-import { MEMO_ONLY_AMOUNT_XRP, sendMemoFieldInstruction } from "../utils/memo-instructions";
-import { computeDirectMintingPaymentAmountXrp } from "../utils/direct-minting";
+import {
+  getPersonalAccountAddress,
+  sendMemoFieldInstruction,
+  type Call,
+} from "../utils/smart-accounts";
+import { computeDirectMintingPaymentAmountXrp } from "../utils/fassets";
 import { findLatestInitiateBridgeEventInLast30Blocks, transferEventAmountMptToXrplAddress } from "./utils";
 
 async function prepareRequestBody(
@@ -163,10 +166,12 @@ async function main() {
 
   await validateUser(xrplWallet, personalAccount, dummyLendingAddress);
 
-  const paymentAmountXrp = await computeDirectMintingPaymentAmountXrp({
-    netMintAmountXrp: fxrpMintAmount,
-  });
+  const [paymentAmountXrp, memoOnlyAmountXrp] = await Promise.all([
+    computeDirectMintingPaymentAmountXrp({ netMintAmountXrp: fxrpMintAmount }),
+    computeDirectMintingPaymentAmountXrp({ netMintAmountXrp: 0 }),
+  ]);
   console.log("Payment amount (XRP, net mint + fees):", paymentAmountXrp, "\n");
+  console.log("Memo-only amount (XRP, fees only):", memoOnlyAmountXrp, "\n");
 
   // XRPL caps each memo at ~1024 bytes. The `approve` and `initiateBridge`
   // encodings are large enough that no 2-call combination fits except
@@ -237,7 +242,7 @@ async function main() {
   await sendMemoFieldInstruction({
     label: "deposit-and-borrow",
     calls: depositAndBorrowCalls,
-    amountXrp: MEMO_ONLY_AMOUNT_XRP,
+    amountXrp: memoOnlyAmountXrp,
     personalAccount,
     xrplClient,
     xrplWallet,
@@ -246,7 +251,7 @@ async function main() {
   await sendMemoFieldInstruction({
     label: "approve-usdt",
     calls: approveUsdtCalls,
-    amountXrp: MEMO_ONLY_AMOUNT_XRP,
+    amountXrp: memoOnlyAmountXrp,
     personalAccount,
     xrplClient,
     xrplWallet,
@@ -255,7 +260,7 @@ async function main() {
   await sendMemoFieldInstruction({
     label: "bridge",
     calls: bridgeCalls,
-    amountXrp: MEMO_ONLY_AMOUNT_XRP,
+    amountXrp: memoOnlyAmountXrp,
     personalAccount,
     xrplClient,
     xrplWallet,

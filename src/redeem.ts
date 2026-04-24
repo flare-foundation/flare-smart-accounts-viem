@@ -1,10 +1,13 @@
 import { encodeFunctionData, zeroAddress } from "viem";
 import { Client, Wallet } from "xrpl";
 import { coston2 } from "@flarenetwork/flare-wagmi-periphery-package";
-import { getPersonalAccountAddress, type Call } from "./utils/smart-accounts";
-import { sendMemoFieldInstruction } from "./utils/memo-instructions";
+import {
+  getPersonalAccountAddress,
+  sendMemoFieldInstruction,
+  type Call,
+} from "./utils/smart-accounts";
 import { getContractAddressByName } from "./utils/flare-contract-registry";
-import { computeDirectMintingPaymentAmountXrp } from "./utils/direct-minting";
+import { computeDirectMintingPaymentAmountXrp } from "./utils/fassets";
 
 const LOTS_TO_REDEEM = 1n;
 

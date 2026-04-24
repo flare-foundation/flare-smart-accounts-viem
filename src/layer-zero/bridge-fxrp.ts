@@ -5,10 +5,10 @@ import { account, publicClient, walletClient } from "../utils/client";
 import { abi as fxrpOftAbi } from "../abis/FXRPOFT";
 import {
   calculateAmountToSend,
-  getFxrpAddress,
   getFxrpBalance,
   getFxrpDecimals,
 } from "../utils/fassets";
+import { getFxrpAddress } from "../utils/flare-contract-registry";
 import type { SendParam } from "./types";
 
 const CONFIG = {

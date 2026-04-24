@@ -1,7 +1,9 @@
 import type { Address } from "viem";
 import { publicClient } from "./utils/client";
-import { getContractAddressByName } from "./utils/flare-contract-registry";
-import { getMintingTagManagerAddress } from "./utils/direct-minting";
+import {
+  getContractAddressByName,
+  getMintingTagManagerAddress,
+} from "./utils/flare-contract-registry";
 import { abi as iMintingTagManagerAbi } from "./abis/IMintingTagManager";
 
 const TAG: bigint = 42n;
