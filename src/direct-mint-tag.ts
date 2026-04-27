@@ -9,12 +9,12 @@ import {
   getMintingTagManagerAddress,
 } from "./utils/flare-contract-registry";
 import { computeDirectMintingPaymentAmountXrp, getFxrpBalance, waitForDirectMintingExecuted } from "./utils/fassets";
-import { abi as iMintingTagManagerAbi } from "./abis/IMintingTagManager";
+import { coston2 } from "@flarenetwork/flare-wagmi-periphery-package";
 
 async function reserveTag(mintingTagManagerAddress: Address): Promise<bigint> {
   const reservationFee = await publicClient.readContract({
     address: mintingTagManagerAddress,
-    abi: iMintingTagManagerAbi,
+    abi: coston2.iMintingTagManagerAbi,
     functionName: "reservationFee",
   });
   console.log("Tag reservation fee (wei):", reservationFee, "\n");
@@ -22,15 +22,15 @@ async function reserveTag(mintingTagManagerAddress: Address): Promise<bigint> {
   const { result, request } = await publicClient.simulateContract({
     account,
     address: mintingTagManagerAddress,
-    abi: iMintingTagManagerAbi,
+    abi: coston2.iMintingTagManagerAbi,
     functionName: "reserve",
-    value: reservationFee as bigint,
+    value: reservationFee,
   });
 
   const txHash = await walletClient.writeContract(request);
   await publicClient.waitForTransactionReceipt({ hash: txHash });
 
-  const tag = result as bigint;
+  const tag = result;
   console.log("Reserved tag:", tag, "\n");
 
   return tag;
@@ -40,7 +40,7 @@ async function setMintingRecipient(mintingTagManagerAddress: Address, tag: bigin
   const { request } = await publicClient.simulateContract({
     account,
     address: mintingTagManagerAddress,
-    abi: iMintingTagManagerAbi,
+    abi: coston2.iMintingTagManagerAbi,
     functionName: "setMintingRecipient",
     args: [tag, recipient],
   });
@@ -53,10 +53,10 @@ async function setMintingRecipient(mintingTagManagerAddress: Address, tag: bigin
 async function getMintingRecipient(mintingTagManagerAddress: Address, tag: bigint): Promise<Address> {
   return publicClient.readContract({
     address: mintingTagManagerAddress,
-    abi: iMintingTagManagerAbi,
+    abi: coston2.iMintingTagManagerAbi,
     functionName: "mintingRecipient",
     args: [tag],
-  }) as Promise<Address>;
+  });
 }
 
 async function getOrReserveTag(mintingTagManagerAddress: Address, recipient: Address): Promise<bigint> {
