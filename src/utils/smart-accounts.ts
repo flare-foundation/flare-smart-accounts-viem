@@ -9,7 +9,6 @@ import {
   getMasterAccountControllerAddress,
 } from "./flare-contract-registry";
 import { abi as iMemoInstructionsFacetAbi } from "../abis/IMemoInstructionsFacet";
-import { abi as iPersonalAccountAbi } from "../abis/IPersonalAccount";
 import type { UserOperationExecutedEventType } from "./event-types";
 
 export async function getOperatorXrplAddresses() {
@@ -160,7 +159,7 @@ export function encodeExecuteUserOpMemo({
   nonce: bigint;
 }): `0x${string}` {
   const callData = encodeFunctionData({
-    abi: iPersonalAccountAbi,
+    abi: coston2.iPersonalAccountAbi,
     functionName: "executeUserOp",
     args: [calls],
   });
