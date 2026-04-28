@@ -4,23 +4,19 @@ import { MPT_ISSUANCE_ID } from "./config";
 import { abi as BridgeAbi } from "../abis/DummyBridge";
 import { abi as LendingAbi } from "../abis/DummyLending";
 import { abi as ERC20Abi } from "../abis/ERC20";
-import {
-  encodeCustomInstruction,
-  getPersonalAccountAddress,
-  registerCustomInstruction,
-  sendCustomInstruction,
-  waitForCustomInstructionExecutedEvent,
-  type CustomInstruction,
-} from "../utils/smart-accounts";
+import { getPersonalAccountAddress, sendMemoFieldInstruction, type Call } from "../utils/smart-accounts";
+import { computeDirectMintingPaymentAmountXrp } from "../utils/fassets";
 import { findLatestInitiateBridgeEventInLast30Blocks, transferEventAmountMptToXrplAddress } from "./utils";
 
 // NOTE:(Nik) For this example to work, you first need to faucet C2FLR to your personal account address.
 async function main() {
+  // Net FXRP amount to mint in XRP. Minting + executor fees are fetched from
+  // AssetManagerFXRP and added on top to form the XRPL payment amount.
+  const fxrpMintAmount = 10;
+
   const xrplClient = new Client(process.env.XRPL_TESTNET_RPC_URL!);
   const xrplWallet = Wallet.fromSeed(process.env.XRPL_SEED!);
   const vaultWallet = Wallet.fromSeed(process.env.VAULT_SEED!);
-
-  const walletId = 0;
 
   const loanContractAddress = "0xa5B3E70376B6CdbBfD33bd2af656f3Fada8f017f";
   const dummyUSDTAddress = "0x8A6a67b3edf7A876E107090485681ec71cAdf3bA";
@@ -28,93 +24,114 @@ async function main() {
 
   const FXRPAddress = "0x0b6A3645c240605887a5532109323A3E12273dc7";
 
-  const amountToDeposit = 100; // In wei
-  const amountToBorrow = 10n; // In wei
+  const amountToDeposit = 100;
+  const amountToBorrow = 10n;
 
-  // NOTE:(Filip) Allow + call deposit + take Loan + approve bridge + withdraw from bridge
-  const allowInstructionFXRP = {
-    targetContract: FXRPAddress,
-    value: BigInt(0),
-    data: encodeFunctionData({
-      abi: ERC20Abi,
-      functionName: "approve",
-      args: [loanContractAddress, amountToDeposit],
-    }),
-  };
+  // XRPL caps each memo at ~1024 bytes. The `approve` and `initiateBridge`
+  // encodings are large enough that no 2-call combination fits except
+  // `[depositCollateral, takeLoan]`, so the 5 calls split into 4 batches.
+  const approveFxrpCalls: Call[] = [
+    {
+      target: FXRPAddress,
+      value: BigInt(0),
+      data: encodeFunctionData({
+        abi: ERC20Abi,
+        functionName: "approve",
+        args: [loanContractAddress, amountToDeposit],
+      }),
+    },
+  ];
+  const approveUsdtCalls: Call[] = [
+    {
+      target: dummyUSDTAddress,
+      value: BigInt(0),
+      data: encodeFunctionData({
+        abi: ERC20Abi,
+        functionName: "approve",
+        args: [bridgeAddress, amountToBorrow],
+      }),
+    },
+  ];
+  const depositAndBorrowCalls: Call[] = [
+    {
+      target: loanContractAddress,
+      value: BigInt(0),
+      data: encodeFunctionData({
+        abi: LendingAbi,
+        functionName: "depositCollateral",
+        args: [amountToDeposit],
+      }),
+    },
+    {
+      target: loanContractAddress,
+      value: BigInt(0),
+      data: encodeFunctionData({
+        abi: LendingAbi,
+        functionName: "takeLoan",
+        args: [amountToBorrow],
+      }),
+    },
+  ];
+  const bridgeCalls: Call[] = [
+    {
+      target: bridgeAddress,
+      value: BigInt(0),
+      data: encodeFunctionData({
+        abi: BridgeAbi,
+        functionName: "initiateBridge",
+        args: [xrplWallet.address, amountToBorrow],
+      }),
+    },
+  ];
 
-  const depositCollateral = {
-    targetContract: loanContractAddress,
-    value: BigInt(0),
-    data: encodeFunctionData({
-      abi: LendingAbi,
-      functionName: "depositCollateral",
-      args: [amountToDeposit],
-    }),
-  };
+  const [personalAccount, paymentAmountXrp, memoOnlyAmountXrp] = await Promise.all([
+    getPersonalAccountAddress(xrplWallet.address),
+    computeDirectMintingPaymentAmountXrp({ netMintAmountXrp: fxrpMintAmount }),
+    computeDirectMintingPaymentAmountXrp({ netMintAmountXrp: 0 }),
+  ]);
+  console.log("Personal account address:", personalAccount, "\n");
+  console.log("Payment amount (XRP, net mint + fees):", paymentAmountXrp, "\n");
+  console.log("Memo-only amount (XRP, fees only):", memoOnlyAmountXrp, "\n");
 
-  const takeLoanInstruction = {
-    targetContract: loanContractAddress,
-    value: BigInt(0),
-    data: encodeFunctionData({
-      abi: LendingAbi,
-      functionName: "takeLoan",
-      args: [amountToBorrow],
-    }),
-  };
-
-  const allowInstructionUSDT = {
-    targetContract: dummyUSDTAddress,
-    value: BigInt(0),
-    data: encodeFunctionData({
-      abi: ERC20Abi,
-      functionName: "approve",
-      args: [bridgeAddress, amountToBorrow],
-    }),
-  };
-
-  const startBridgeInstruction = {
-    targetContract: bridgeAddress,
-    value: BigInt(0),
-    data: encodeFunctionData({
-      abi: BridgeAbi,
-      functionName: "initiateBridge",
-      args: [xrplWallet.address, amountToBorrow],
-    }),
-  };
-
-  const customInstructions = [
-    allowInstructionFXRP,
-    depositCollateral,
-    takeLoanInstruction,
-    allowInstructionUSDT,
-    startBridgeInstruction,
-  ] as CustomInstruction[];
-  console.log("Custom instructions:", customInstructions, "\n");
-
-  const personalAccountAddress = await getPersonalAccountAddress(xrplWallet.address);
-  console.log("Personal account address:", personalAccountAddress, "\n");
-
-  const customInstructionCallHash = await registerCustomInstruction(customInstructions);
-  console.log("Custom instruction call hash:", customInstructionCallHash, "\n");
-  const encodedInstruction = await encodeCustomInstruction(customInstructions, walletId);
-  console.log("Encoded instructions:", encodedInstruction, "\n");
-
-  const customInstructionTransaction = await sendCustomInstruction({
-    encodedInstruction,
+  await sendMemoFieldInstruction({
+    label: "approve-fxrp",
+    calls: approveFxrpCalls,
+    amountXrp: paymentAmountXrp,
+    personalAccount,
     xrplClient,
     xrplWallet,
   });
-  console.log("Custom instruction transaction hash:", customInstructionTransaction.result.hash, "\n");
 
-  const customInstructionExecutedEvent = await waitForCustomInstructionExecutedEvent({
-    encodedInstruction,
-    personalAccountAddress,
+  await sendMemoFieldInstruction({
+    label: "deposit-and-borrow",
+    calls: depositAndBorrowCalls,
+    amountXrp: memoOnlyAmountXrp,
+    personalAccount,
+    xrplClient,
+    xrplWallet,
   });
-  console.log("CustomInstructionExecuted event:", customInstructionExecutedEvent, "\n");
+
+  await sendMemoFieldInstruction({
+    label: "approve-usdt",
+    calls: approveUsdtCalls,
+    amountXrp: memoOnlyAmountXrp,
+    personalAccount,
+    xrplClient,
+    xrplWallet,
+  });
+
+  await sendMemoFieldInstruction({
+    label: "bridge",
+    calls: bridgeCalls,
+    amountXrp: memoOnlyAmountXrp,
+    personalAccount,
+    xrplClient,
+    xrplWallet,
+  });
 
   const initiateBridgeEvent = await findLatestInitiateBridgeEventInLast30Blocks({
     bridgeAddress: bridgeAddress as `0x${string}`,
-    personalAccountAddress,
+    personalAccountAddress: personalAccount,
   });
   console.log("InitiateBridge event:", initiateBridgeEvent, "\n");
 

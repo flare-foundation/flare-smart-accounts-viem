@@ -268,10 +268,7 @@ export async function sendMptToAccount(
   }
 }
 
-export type InitiateBridgeEventLog = GetContractEventsReturnType<
-  typeof BridgeAbi,
-  "InitiateBridge"
->[number];
+export type InitiateBridgeEventLog = GetContractEventsReturnType<typeof BridgeAbi, "InitiateBridge">[number];
 
 export async function findLatestInitiateBridgeEventInLast30Blocks({
   bridgeAddress,

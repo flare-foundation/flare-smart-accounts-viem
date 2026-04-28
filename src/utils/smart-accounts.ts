@@ -1,14 +1,15 @@
-import { fromHex, toHex, type Address, type Log } from "viem";
+import { concatHex, encodeAbiParameters, encodeFunctionData, toHex, type Address } from "viem";
+import { Client, Wallet } from "xrpl";
 import { coston2 } from "@flarenetwork/flare-wagmi-periphery-package";
-import { account, publicClient, walletClient } from "./client";
-
-import { getContractAddressByName } from "./flare-contract-registry";
-import { dropsToXrp, type Client, type Wallet } from "xrpl";
+import { publicClient } from "./client";
 import { sendXrplPayment } from "./xrpl";
-
-export async function getMasterAccountControllerAddress(): Promise<Address> {
-  return getContractAddressByName("MasterAccountController");
-}
+import {
+  getContractAddressByName,
+  getDirectMintingPaymentAddress,
+  getMasterAccountControllerAddress,
+} from "./flare-contract-registry";
+import { abi as iMemoInstructionsFacetAbi } from "../abis/IMemoInstructionsFacet";
+import type { UserOperationExecutedEventType } from "./event-types";
 
 export async function getOperatorXrplAddresses() {
   const result = await publicClient.readContract({
@@ -30,7 +31,6 @@ export async function getPersonalAccountAddress(xrplAddress: string) {
 
   return personalAccountAddress;
 }
-
 
 export async function getXrplAccountForAddress(evmAddress: Address): Promise<`0x${string}`> {
   const xrplOwner = await publicClient.readContract({
@@ -113,146 +113,153 @@ export async function getAgentVaults(): Promise<AgentVault[]> {
   return vaults;
 }
 
-export async function getInstructionFee(encodedInstruction: string) {
-  const instructionId = encodedInstruction.slice(0, 4);
-  const instructionIdDecimal = fromHex(instructionId as `0x${string}`, "bigint");
-
-  console.log("instructionIdDecimal:", instructionIdDecimal, "\n");
-
-  const requestFee = await publicClient.readContract({
-    address: await getMasterAccountControllerAddress(),
-    abi: coston2.iMasterAccountControllerAbi,
-    functionName: "getInstructionFee",
-    args: [instructionIdDecimal],
-  });
-  return dropsToXrp(Number(requestFee));
-}
-
-export type CustomInstruction = {
-  targetContract: Address;
+export type Call = {
+  target: Address;
   value: bigint;
   data: `0x${string}`;
 };
 
-export async function getCustomInstructionHash(instructions: CustomInstruction[]): Promise<`0x${string}`> {
-  const customInstructionHash = await publicClient.readContract({
+const ZERO_BYTES32 = ("0x" + "00".repeat(32)) as `0x${string}`;
+
+const PACKED_USER_OPERATION_TUPLE = {
+  type: "tuple",
+  components: [
+    { name: "sender", type: "address" },
+    { name: "nonce", type: "uint256" },
+    { name: "initCode", type: "bytes" },
+    { name: "callData", type: "bytes" },
+    { name: "accountGasLimits", type: "bytes32" },
+    { name: "preVerificationGas", type: "uint256" },
+    { name: "gasFees", type: "bytes32" },
+    { name: "paymasterAndData", type: "bytes" },
+    { name: "signature", type: "bytes" },
+  ],
+} as const;
+
+export async function getNonce(personalAccount: Address): Promise<bigint> {
+  return publicClient.readContract({
     address: await getMasterAccountControllerAddress(),
-    abi: coston2.iCustomInstructionsFacetAbi,
-    functionName: "encodeCustomInstruction",
-    args: [instructions],
+    abi: iMemoInstructionsFacetAbi,
+    functionName: "getNonce",
+    args: [personalAccount],
+  }) as Promise<bigint>;
+}
+
+export function encodeExecuteUserOpMemo({
+  calls,
+  walletId,
+  executorFeeUBA,
+  sender,
+  nonce,
+}: {
+  calls: Call[];
+  walletId: number;
+  executorFeeUBA: bigint;
+  sender: Address;
+  nonce: bigint;
+}): `0x${string}` {
+  const callData = encodeFunctionData({
+    abi: coston2.iPersonalAccountAbi,
+    functionName: "executeUserOp",
+    args: [calls],
   });
-  return customInstructionHash;
+
+  const encodedUserOp = encodeAbiParameters(
+    [PACKED_USER_OPERATION_TUPLE],
+    [
+      {
+        sender,
+        nonce,
+        initCode: "0x",
+        callData,
+        accountGasLimits: ZERO_BYTES32,
+        preVerificationGas: 0n,
+        gasFees: ZERO_BYTES32,
+        paymasterAndData: "0x",
+        signature: "0x",
+      },
+    ]
+  );
+
+  // 10-byte header: 0xFF | walletId (1B) | executorFee (8B, big-endian)
+  const header = concatHex(["0xff", toHex(walletId, { size: 1 }), toHex(executorFeeUBA, { size: 8 })]);
+
+  return concatHex([header, encodedUserOp]);
 }
 
-export async function getCustomInstruction(customInstructionHash: `0x${string}`): Promise<CustomInstruction[]> {
-  const customInstruction = (await publicClient.readContract({
-    address: await getMasterAccountControllerAddress(),
-    abi: coston2.iCustomInstructionsFacetAbi,
-    functionName: "getCustomInstruction",
-    args: [customInstructionHash],
-  })) as CustomInstruction[];
-  return customInstruction;
-}
-
-export async function isCustomInstructionRegistered(instructions: CustomInstruction[]): Promise<{
-  customInstructionHash: `0x${string}`;
-  isRegistered: boolean;
-}> {
-  const customInstructionHash = await getCustomInstructionHash(instructions);
-  const customInstruction = await getCustomInstruction(customInstructionHash);
-  return {
-    customInstructionHash,
-    isRegistered: customInstruction.length > 0,
-  };
-}
-
-export async function registerCustomInstruction(instructions: CustomInstruction[]): Promise<`0x${string}`> {
-  const { request } = await publicClient.simulateContract({
-    account: account,
-    address: await getMasterAccountControllerAddress(),
-    abi: coston2.iCustomInstructionsFacetAbi,
-    functionName: "registerCustomInstruction",
-    args: [instructions],
-  });
-  console.log("request:", request, "\n");
-
-  const registerCustomInstructionTransaction = await walletClient.writeContract(request);
-  console.log("Register custom instruction transaction:", registerCustomInstructionTransaction, "\n");
-
-  return registerCustomInstructionTransaction;
-}
-
-export async function encodeCustomInstruction(instructions: CustomInstruction[], walletId: number) {
-  const encodedInstruction = await getCustomInstructionHash(instructions);
-  // NOTE:(Nik) We cut off the `0x` prefix and the first 2 bytes to get the length down to 30 bytes
-  return ("0xff" + toHex(walletId, { size: 1 }).slice(2) + encodedInstruction.slice(6)) as `0x${string}`;
-}
-
-export async function sendCustomInstruction({
-  encodedInstruction,
+export async function sendMemoFieldInstruction({
+  label,
+  calls,
+  amountXrp,
+  personalAccount,
   xrplClient,
   xrplWallet,
 }: {
-  encodedInstruction: `0x${string}`;
+  label: string;
+  calls: Call[];
+  amountXrp: number;
+  personalAccount: Address;
   xrplClient: Client;
   xrplWallet: Wallet;
 }) {
-  const operatorXrplAddress = (await getOperatorXrplAddresses())[0] as string;
+  console.log(`[${label}] calls:`, calls, "\n");
 
-  const instructionFee = await getInstructionFee(encodedInstruction);
-  console.log("Instruction fee:", instructionFee, "\n");
+  const nonce = await getNonce(personalAccount);
+  console.log(`[${label}] current nonce:`, nonce, "\n");
 
-  const customInstructionTransaction = await sendXrplPayment({
-    destination: operatorXrplAddress,
-    amount: instructionFee,
-    memos: [{ Memo: { MemoData: encodedInstruction.slice(2) } }],
+  const memoData = encodeExecuteUserOpMemo({
+    calls,
+    walletId: 0,
+    executorFeeUBA: 0n,
+    sender: personalAccount,
+    nonce,
+  });
+
+  const assetManagerAddress = await getContractAddressByName("AssetManagerFXRP");
+  const coreVaultXrplAddress = await getDirectMintingPaymentAddress(assetManagerAddress);
+
+  const transaction = await sendXrplPayment({
+    destination: coreVaultXrplAddress,
+    amount: amountXrp,
+    memos: [{ Memo: { MemoData: memoData.slice(2) } }],
     wallet: xrplWallet,
     client: xrplClient,
   });
+  console.log(`[${label}] XRPL transaction hash:`, transaction.result.hash, "\n");
 
-  return customInstructionTransaction;
+  const event = await waitForUserOperationExecuted({ personalAccount, nonce });
+  console.log(`[${label}] UserOperationExecuted event:`, event, "\n");
+  return event;
 }
 
-export async function waitForCustomInstructionExecutedEvent({
-  encodedInstruction,
-  personalAccountAddress,
+export async function waitForUserOperationExecuted({
+  personalAccount,
+  nonce,
 }: {
-  encodedInstruction: `0x${string}`;
-  personalAccountAddress: string;
-}) {
-  let customInstructionExecutedEvent: Log | undefined;
-  let customInstructionExecutedEventFound = false;
+  personalAccount: Address;
+  nonce: bigint;
+}): Promise<UserOperationExecutedEventType> {
+  const masterAccountControllerAddress = await getMasterAccountControllerAddress();
 
-  const unwatchCustomInstructionExecuted = publicClient.watchContractEvent({
-    address: await getMasterAccountControllerAddress(),
-    abi: coston2.iInstructionsFacetAbi,
-    eventName: "CustomInstructionExecuted",
-    onLogs: (logs) => {
-      for (const log of logs) {
-        const callHash = log.args.callHash;
-        const personalAccount = log.args.personalAccount;
-        if (!callHash || !personalAccount) {
-          continue;
+  return new Promise((resolve) => {
+    const unwatch = publicClient.watchContractEvent({
+      address: masterAccountControllerAddress,
+      abi: iMemoInstructionsFacetAbi,
+      eventName: "UserOperationExecuted",
+      onLogs: (logs) => {
+        for (const log of logs) {
+          const typedLog = log as UserOperationExecutedEventType;
+          if (
+            typedLog.args.personalAccount.toLowerCase() !== personalAccount.toLowerCase() ||
+            typedLog.args.nonce !== nonce
+          ) {
+            continue;
+          }
+          unwatch();
+          resolve(typedLog);
+          return;
         }
-
-        customInstructionExecutedEvent = log;
-        if (
-          callHash.slice(6) !== encodedInstruction.slice(6) ||
-          personalAccount.toLowerCase() !== personalAccountAddress.toLowerCase()
-        ) {
-          continue;
-        }
-        customInstructionExecutedEventFound = true;
-        break;
-      }
-    },
+      },
+    });
   });
-
-  console.log("Waiting for CustomInstructionExecuted event...");
-  while (!customInstructionExecutedEventFound) {
-    await new Promise((resolve) => setTimeout(resolve, 10000));
-  }
-  unwatchCustomInstructionExecuted();
-
-  return customInstructionExecutedEvent;
 }
