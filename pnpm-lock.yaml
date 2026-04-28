@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@flarenetwork/flare-wagmi-periphery-package':
-        specifier: ^3.2.0
-        version: 3.2.0(@coinbase/wallet-sdk@4.3.6(bufferutil@4.1.0)(react@18.3.1)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@18.3.1))(utf-8-validate@5.0.10)(zod@4.3.6))(@openzeppelin/contracts-upgradeable@5.6.1(@openzeppelin/contracts@5.6.1))(@openzeppelin/contracts@5.6.1)(@safe-global/safe-apps-provider@0.18.6(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.3.6))(@safe-global/safe-apps-sdk@9.1.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.3.6))(@tanstack/query-core@5.90.12)(@tanstack/react-query@5.90.12(react@18.3.1))(@walletconnect/ethereum-provider@2.21.1(bufferutil@4.1.0)(react@18.3.1)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.3.6))(bufferutil@4.1.0)(hardhat-deploy@0.12.4(bufferutil@4.1.0)(utf-8-validate@5.0.10))(porto@0.2.35)(react@18.3.1)(solidity-bytes-utils@0.8.4)(utf-8-validate@5.0.10)(zod@4.3.6)
+        specifier: ^3.3.0
+        version: 3.3.0(@coinbase/wallet-sdk@4.3.6(bufferutil@4.1.0)(react@18.3.1)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@18.3.1))(utf-8-validate@5.0.10)(zod@4.3.6))(@openzeppelin/contracts-upgradeable@5.6.1(@openzeppelin/contracts@5.6.1))(@openzeppelin/contracts@5.6.1)(@safe-global/safe-apps-provider@0.18.6(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.3.6))(@safe-global/safe-apps-sdk@9.1.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.3.6))(@tanstack/query-core@5.90.12)(@tanstack/react-query@5.90.12(react@18.3.1))(@walletconnect/ethereum-provider@2.21.1(bufferutil@4.1.0)(react@18.3.1)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.3.6))(bufferutil@4.1.0)(hardhat-deploy@0.12.4(bufferutil@4.1.0)(utf-8-validate@5.0.10))(porto@0.2.35)(react@18.3.1)(solidity-bytes-utils@0.8.4)(utf-8-validate@5.0.10)(zod@4.3.6)
       '@flarenetwork/smart-accounts-encoder':
         specifier: ^0.0.8
         version: 0.0.8
@@ -544,8 +544,8 @@ packages:
   '@flarenetwork/eslint-config-flare@0.0.1':
     resolution: {integrity: sha512-X3c6qSE42Vr86je0Xbvfoqab5P5tsqm1Mo98g1trRnqH/Ckwc9KGAe8TqgD1B8boxiis1XQ7+FLgdqxIraViVw==}
 
-  '@flarenetwork/flare-wagmi-periphery-package@3.2.0':
-    resolution: {integrity: sha512-wTs7Q13mRSWRZynEIlNlH5CmAI3x3BSCCIUHwfdouK7iz1jx2cWnCAHx8e9Dy8Q1O8xsXOYKoGj6W4KuOL0bgA==}
+  '@flarenetwork/flare-wagmi-periphery-package@3.3.0':
+    resolution: {integrity: sha512-fw1KRgMqg6YmSvB1hSmTB72MpYdL64MDbpCsxSYrHY+RtlIjzdsveygvY47TV8Fhqx1dG/Csol8KVkmXi3Inig==}
 
   '@flarenetwork/prettier-config-flare@0.0.2':
     resolution: {integrity: sha512-XgO2ia3W2iMrbujPDPrVcp9vzMRTqYqtKMgGn1ksWDsZNWOsKXkSpoWgm7IPWvj/M35i0HMC+eIj02QOAwjUMQ==}
@@ -3175,7 +3175,7 @@ snapshots:
       - supports-color
       - typescript
 
-  '@flarenetwork/flare-wagmi-periphery-package@3.2.0(@coinbase/wallet-sdk@4.3.6(bufferutil@4.1.0)(react@18.3.1)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@18.3.1))(utf-8-validate@5.0.10)(zod@4.3.6))(@openzeppelin/contracts-upgradeable@5.6.1(@openzeppelin/contracts@5.6.1))(@openzeppelin/contracts@5.6.1)(@safe-global/safe-apps-provider@0.18.6(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.3.6))(@safe-global/safe-apps-sdk@9.1.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.3.6))(@tanstack/query-core@5.90.12)(@tanstack/react-query@5.90.12(react@18.3.1))(@walletconnect/ethereum-provider@2.21.1(bufferutil@4.1.0)(react@18.3.1)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.3.6))(bufferutil@4.1.0)(hardhat-deploy@0.12.4(bufferutil@4.1.0)(utf-8-validate@5.0.10))(porto@0.2.35)(react@18.3.1)(solidity-bytes-utils@0.8.4)(utf-8-validate@5.0.10)(zod@4.3.6)':
+  '@flarenetwork/flare-wagmi-periphery-package@3.3.0(@coinbase/wallet-sdk@4.3.6(bufferutil@4.1.0)(react@18.3.1)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@18.3.1))(utf-8-validate@5.0.10)(zod@4.3.6))(@openzeppelin/contracts-upgradeable@5.6.1(@openzeppelin/contracts@5.6.1))(@openzeppelin/contracts@5.6.1)(@safe-global/safe-apps-provider@0.18.6(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.3.6))(@safe-global/safe-apps-sdk@9.1.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.3.6))(@tanstack/query-core@5.90.12)(@tanstack/react-query@5.90.12(react@18.3.1))(@walletconnect/ethereum-provider@2.21.1(bufferutil@4.1.0)(react@18.3.1)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.3.6))(bufferutil@4.1.0)(hardhat-deploy@0.12.4(bufferutil@4.1.0)(utf-8-validate@5.0.10))(porto@0.2.35)(react@18.3.1)(solidity-bytes-utils@0.8.4)(utf-8-validate@5.0.10)(zod@4.3.6)':
     dependencies:
       '@layerzerolabs/lz-evm-protocol-v2': 3.0.168(@openzeppelin/contracts-upgradeable@5.6.1(@openzeppelin/contracts@5.6.1))(@openzeppelin/contracts@5.6.1)(hardhat-deploy@0.12.4(bufferutil@4.1.0)(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)
       '@types/node': 24.10.13

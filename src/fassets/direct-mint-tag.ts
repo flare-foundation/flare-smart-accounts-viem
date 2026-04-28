@@ -1,14 +1,14 @@
 import { Client, Wallet } from "xrpl";
 import type { Address } from "viem";
-import { sendXrplPayment } from "./utils/xrpl";
-import { account, publicClient, walletClient } from "./utils/client";
-import { getPersonalAccountAddress } from "./utils/smart-accounts";
+import { sendXrplPayment } from "../utils/xrpl";
+import { account, publicClient, walletClient } from "../utils/client";
+import { getPersonalAccountAddress } from "../utils/smart-accounts";
 import {
   getContractAddressByName,
   getDirectMintingPaymentAddress,
   getMintingTagManagerAddress,
-} from "./utils/flare-contract-registry";
-import { computeDirectMintingPaymentAmountXrp, getFxrpBalance, waitForDirectMintingExecuted } from "./utils/fassets";
+} from "../utils/flare-contract-registry";
+import { computeDirectMintingPaymentAmountXrp, getFxrpBalance, waitForDirectMintingExecuted } from "../utils/fassets";
 import { coston2 } from "@flarenetwork/flare-wagmi-periphery-package";
 
 async function reserveTag(mintingTagManagerAddress: Address): Promise<bigint> {
