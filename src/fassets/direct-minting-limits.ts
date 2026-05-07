@@ -1,7 +1,15 @@
-import { coston2 } from "@flarenetwork/flare-wagmi-periphery-package";
 import { dropsToXrp } from "xrpl";
-import { publicClient } from "../utils/client";
-import { getContractAddressByName } from "../utils/flare-contract-registry";
+import { getAssetManagerFXRPAddress } from "../utils/flare-contract-registry";
+import {
+  getAssetMintingGranularityUBA,
+  getDirectMintingDailyLimitUBA,
+  getDirectMintingDailyLimiterState,
+  getDirectMintingHourlyLimitUBA,
+  getDirectMintingHourlyLimiterState,
+  getDirectMintingLargeMintingDelaySeconds,
+  getDirectMintingLargeMintingThresholdUBA,
+  getDirectMintingsUnblockUntilTimestamp,
+} from "./settings";
 
 // How the hourly/daily limits work (MintingRateLimiter.sol):
 //
@@ -38,49 +46,54 @@ function formatUba(uba: bigint): string {
 function formatTimestamp(secondsSinceEpoch: bigint, now: bigint): string {
   const iso = new Date(Number(secondsSinceEpoch) * 1000).toISOString();
   const delta = Number(secondsSinceEpoch - now);
-  const sign = delta >= 0 ? "in" : "ago";
-  return `${iso} (${sign} ${Math.abs(delta)}s)`;
+  const relative = delta >= 0 ? `in ${delta}s` : `${-delta}s ago`;
+  return `${iso} (${relative})`;
 }
 
-// MintingRateLimiter only rolls the window forward on writes, so a pure read
-// can return a stale (windowStart, minted) pair. Replay the slide off-chain.
+function bigintMin(a: bigint, b: bigint): bigint {
+  return a < b ? a : b;
+}
+
 function computeWindowState({
   now,
   windowStartTimestamp,
-  mintedInCurrentWindow,
-  maxPerWindowAmg,
+  mintedInCurrentWindowUBA,
+  limitUBA,
   windowSizeSeconds,
 }: {
   now: bigint;
   windowStartTimestamp: bigint;
-  mintedInCurrentWindow: bigint;
-  maxPerWindowAmg: bigint;
+  mintedInCurrentWindowUBA: bigint;
+  limitUBA: bigint;
   windowSizeSeconds: bigint;
 }) {
   let effectiveStart = windowStartTimestamp;
-  let effectiveMinted = mintedInCurrentWindow;
+  let usedUBA = mintedInCurrentWindowUBA;
 
   if (windowStartTimestamp > 0n && now >= windowStartTimestamp + windowSizeSeconds) {
     const windowsElapsed = (now - windowStartTimestamp) / windowSizeSeconds;
     effectiveStart = windowStartTimestamp + windowsElapsed * windowSizeSeconds;
-    const drained = windowsElapsed * maxPerWindowAmg;
-    effectiveMinted = drained >= effectiveMinted ? 0n : effectiveMinted - drained;
+    const drained = windowsElapsed * limitUBA;
+    usedUBA = drained >= usedUBA ? 0n : usedUBA - drained;
   }
 
-  const remainingAmg = maxPerWindowAmg > effectiveMinted ? maxPerWindowAmg - effectiveMinted : 0n;
+  const remainingUBA = limitUBA > usedUBA ? limitUBA - usedUBA : 0n;
   const nextResetAt = effectiveStart + windowSizeSeconds;
 
-  return { effectiveStart, effectiveMinted, remainingAmg, nextResetAt };
+  return { effectiveStart, usedUBA, remainingUBA, nextResetAt };
 }
 
-function printWindow(label: string, opts: {
-  limitUBA: bigint;
-  usedUBA: bigint;
-  remainingUBA: bigint;
-  effectiveStart: bigint;
-  nextResetAt: bigint;
-  now: bigint;
-}) {
+function printWindow(
+  label: string,
+  opts: {
+    limitUBA: bigint;
+    usedUBA: bigint;
+    remainingUBA: bigint;
+    effectiveStart: bigint;
+    nextResetAt: bigint;
+    now: bigint;
+  },
+) {
   const { limitUBA, usedUBA, remainingUBA, effectiveStart, nextResetAt, now } = opts;
   const usedPct = limitUBA === 0n ? 0 : Number((usedUBA * 10000n) / limitUBA) / 100;
   console.log(`=== ${label} ===`);
@@ -93,17 +106,11 @@ function printWindow(label: string, opts: {
 }
 
 async function main() {
-  const assetManagerAddress = await getContractAddressByName("AssetManagerFXRP");
+  const assetManagerAddress = await getAssetManagerFXRPAddress();
   console.log("AssetManagerFXRP address:", assetManagerAddress, "\n");
 
-  const settings = await publicClient.readContract({
-    address: assetManagerAddress,
-    abi: coston2.iAssetManagerAbi,
-    functionName: "getSettings",
-  });
-  const amgGranularityUBA = BigInt(settings.assetMintingGranularityUBA);
-
   const [
+    amgGranularityUBA,
     hourlyLimitUBA,
     dailyLimitUBA,
     hourlyState,
@@ -111,92 +118,56 @@ async function main() {
     unblockUntilTimestamp,
     largeThresholdUBA,
     largeDelaySeconds,
+  ]: [
+    bigint,
+    bigint,
+    bigint,
+    readonly [bigint, bigint],
+    readonly [bigint, bigint],
+    bigint,
+    bigint,
+    bigint,
   ] = await Promise.all([
-    publicClient.readContract({
-      address: assetManagerAddress,
-      abi: coston2.iDirectMintingSettingsAbi,
-      functionName: "getDirectMintingHourlyLimitUBA",
-    }),
-    publicClient.readContract({
-      address: assetManagerAddress,
-      abi: coston2.iDirectMintingSettingsAbi,
-      functionName: "getDirectMintingDailyLimitUBA",
-    }),
-    publicClient.readContract({
-      address: assetManagerAddress,
-      abi: coston2.iDirectMintingSettingsAbi,
-      functionName: "getDirectMintingHourlyLimiterState",
-    }),
-    publicClient.readContract({
-      address: assetManagerAddress,
-      abi: coston2.iDirectMintingSettingsAbi,
-      functionName: "getDirectMintingDailyLimiterState",
-    }),
-    publicClient.readContract({
-      address: assetManagerAddress,
-      abi: coston2.iDirectMintingSettingsAbi,
-      functionName: "getDirectMintingsUnblockUntilTimestamp",
-    }),
-    publicClient.readContract({
-      address: assetManagerAddress,
-      abi: coston2.iDirectMintingSettingsAbi,
-      functionName: "getDirectMintingLargeMintingThresholdUBA",
-    }),
-    publicClient.readContract({
-      address: assetManagerAddress,
-      abi: coston2.iDirectMintingSettingsAbi,
-      functionName: "getDirectMintingLargeMintingDelaySeconds",
-    }),
+    getAssetMintingGranularityUBA(assetManagerAddress),
+    getDirectMintingHourlyLimitUBA(assetManagerAddress),
+    getDirectMintingDailyLimitUBA(assetManagerAddress),
+    getDirectMintingHourlyLimiterState(assetManagerAddress),
+    getDirectMintingDailyLimiterState(assetManagerAddress),
+    getDirectMintingsUnblockUntilTimestamp(assetManagerAddress),
+    getDirectMintingLargeMintingThresholdUBA(assetManagerAddress),
+    getDirectMintingLargeMintingDelaySeconds(assetManagerAddress),
   ]);
 
   const now = BigInt(Math.floor(Date.now() / 1000));
   const limiterDisabled = unblockUntilTimestamp > now;
-
-  // Limiter state is returned as raw AMG (uint64), unlike the *LimitUBA getters.
-  // Convert via assetMintingGranularityUBA before comparing or displaying.
-  const [hourlyWindowStart, hourlyMintedAmg] = hourlyState;
-  const [dailyWindowStart, dailyMintedAmg] = dailyState;
-
-  const hourlyMaxAmg = amgGranularityUBA === 0n ? 0n : hourlyLimitUBA / amgGranularityUBA;
-  const dailyMaxAmg = amgGranularityUBA === 0n ? 0n : dailyLimitUBA / amgGranularityUBA;
-
-  const hourly = computeWindowState({
-    now,
-    windowStartTimestamp: hourlyWindowStart,
-    mintedInCurrentWindow: hourlyMintedAmg,
-    maxPerWindowAmg: hourlyMaxAmg,
-    windowSizeSeconds: HOURLY_WINDOW_SECONDS,
-  });
-  const daily = computeWindowState({
-    now,
-    windowStartTimestamp: dailyWindowStart,
-    mintedInCurrentWindow: dailyMintedAmg,
-    maxPerWindowAmg: dailyMaxAmg,
-    windowSizeSeconds: DAILY_WINDOW_SECONDS,
-  });
 
   console.log(
     "Windows are clock-aligned tumbling: hourly snaps to UTC hour boundaries, daily to 00:00 UTC.",
   );
   console.log("Unused capacity does not roll over; over-cap mints are delayed, not rejected.\n");
 
-  printWindow("Hourly window", {
-    limitUBA: hourlyLimitUBA,
-    usedUBA: hourly.effectiveMinted * amgGranularityUBA,
-    remainingUBA: hourly.remainingAmg * amgGranularityUBA,
-    effectiveStart: hourly.effectiveStart,
-    nextResetAt: hourly.nextResetAt,
-    now,
-  });
+  // Limiter state is returned as raw AMG (uint64); convert to UBA via amgGranularityUBA
+  // before passing into the window math.
+  const computeAndPrint = (
+    label: string,
+    limitUBA: bigint,
+    state: readonly [bigint, bigint],
+    sizeSeconds: bigint,
+  ) => {
+    const [windowStart, mintedAmg] = state;
+    const result = computeWindowState({
+      now,
+      windowStartTimestamp: windowStart,
+      mintedInCurrentWindowUBA: mintedAmg * amgGranularityUBA,
+      limitUBA,
+      windowSizeSeconds: sizeSeconds,
+    });
+    printWindow(label, { ...result, limitUBA, now });
+    return result;
+  };
 
-  printWindow("Daily window", {
-    limitUBA: dailyLimitUBA,
-    usedUBA: daily.effectiveMinted * amgGranularityUBA,
-    remainingUBA: daily.remainingAmg * amgGranularityUBA,
-    effectiveStart: daily.effectiveStart,
-    nextResetAt: daily.nextResetAt,
-    now,
-  });
+  const hourly = computeAndPrint("Hourly window", hourlyLimitUBA, hourlyState, HOURLY_WINDOW_SECONDS);
+  const daily = computeAndPrint("Daily window", dailyLimitUBA, dailyState, DAILY_WINDOW_SECONDS);
 
   console.log("=== Other flags ===");
   if (limiterDisabled) {
@@ -216,15 +187,9 @@ async function main() {
   console.log();
 
   // Pre-flight gate: how much can a single mint safely request right now?
-  const safeRemainingUBA = limiterDisabled
-    ? hourlyLimitUBA > dailyLimitUBA
-      ? dailyLimitUBA
-      : hourlyLimitUBA
-    : (() => {
-        const hourlyRemainingUBA = hourly.remainingAmg * amgGranularityUBA;
-        const dailyRemainingUBA = daily.remainingAmg * amgGranularityUBA;
-        return hourlyRemainingUBA < dailyRemainingUBA ? hourlyRemainingUBA : dailyRemainingUBA;
-      })();
+  const hourlyHeadroomUBA = limiterDisabled ? hourlyLimitUBA : hourly.remainingUBA;
+  const dailyHeadroomUBA = limiterDisabled ? dailyLimitUBA : daily.remainingUBA;
+  const safeRemainingUBA = bigintMin(hourlyHeadroomUBA, dailyHeadroomUBA);
   console.log("Maximum single mint that fits both windows:", formatUba(safeRemainingUBA));
 }
 
