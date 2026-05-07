@@ -10,7 +10,7 @@ async function readBalances(personalAccount: Address) {
   return Promise.all([readChips(personalAccount), getFxrpBalance(personalAccount)]);
 }
 
-async function cashOut({ ctx, chipAmount }: { ctx: RouletteContext; chipAmount: bigint }) {
+async function cashOut({ context, chipAmount }: { context: RouletteContext; chipAmount: bigint }) {
   const calls: Call[] = [
     {
       target: rouletteAddress,
@@ -25,10 +25,10 @@ async function cashOut({ ctx, chipAmount }: { ctx: RouletteContext; chipAmount: 
   await sendMemoFieldInstruction({
     label: "cash-out",
     calls,
-    amountXrp: ctx.memoOnlyAmountXrp,
-    personalAccount: ctx.personalAccount,
-    xrplClient: ctx.xrplClient,
-    xrplWallet: ctx.xrplWallet,
+    amountXrp: context.memoOnlyAmountXrp,
+    personalAccount: context.personalAccount,
+    xrplClient: context.xrplClient,
+    xrplWallet: context.xrplWallet,
   });
 }
 
@@ -47,7 +47,7 @@ async function main() {
   console.log("Personal account address:", personalAccount, "\n");
   console.log("Memo-only amount (XRP, fees only):", memoOnlyAmountXrp, "\n");
 
-  const ctx: RouletteContext = { personalAccount, memoOnlyAmountXrp, xrplClient, xrplWallet };
+  const context: RouletteContext = { personalAccount, memoOnlyAmountXrp, xrplClient, xrplWallet };
 
   const [chipsBefore, fxrpBefore] = await readBalances(personalAccount);
   console.log("Chips before:", formatFxrp(chipsBefore), "FXRP\n");
@@ -58,7 +58,7 @@ async function main() {
     return;
   }
 
-  await cashOut({ ctx, chipAmount: chipsBefore });
+  await cashOut({ context, chipAmount: chipsBefore });
 
   const [chipsAfter, fxrpAfter] = await readBalances(personalAccount);
   console.log("Chips after:", formatFxrp(chipsAfter), "FXRP\n");

@@ -22,11 +22,11 @@ const BetKind = {
 type BetKindValue = (typeof BetKind)[keyof typeof BetKind];
 
 async function placeBet({
-  ctx,
+  context,
   bet,
   betAmount,
 }: {
-  ctx: RouletteContext;
+  context: RouletteContext;
   bet: { kind: BetKindValue; selection: number };
   betAmount: bigint;
 }): Promise<{ betId: bigint; placedAt: bigint }> {
@@ -41,22 +41,24 @@ async function placeBet({
       }),
     },
   ];
-  const event = await sendMemoFieldInstruction({
+  const submissionEvent = await sendMemoFieldInstruction({
     label: "place-bet",
     calls,
-    amountXrp: ctx.memoOnlyAmountXrp,
-    personalAccount: ctx.personalAccount,
-    xrplClient: ctx.xrplClient,
-    xrplWallet: ctx.xrplWallet,
+    amountXrp: context.memoOnlyAmountXrp,
+    personalAccount: context.personalAccount,
+    xrplClient: context.xrplClient,
+    xrplWallet: context.xrplWallet,
   });
 
-  const receipt = await publicClient.waitForTransactionReceipt({ hash: event.transactionHash! });
-  const logs = parseEventLogs({ abi: rouletteAbi, eventName: "BetPlaced", logs: receipt.logs });
-  const placed = logs.find((log) => log.args.player.toLowerCase() === ctx.personalAccount.toLowerCase());
-  if (!placed) {
+  const receipt = await publicClient.waitForTransactionReceipt({ hash: submissionEvent.transactionHash! });
+  const betPlacedLogs = parseEventLogs({ abi: rouletteAbi, eventName: "BetPlaced", logs: receipt.logs });
+  const betPlacedLog = betPlacedLogs.find(
+    (log) => log.args.player.toLowerCase() === context.personalAccount.toLowerCase()
+  );
+  if (!betPlacedLog) {
     throw new Error("BetPlaced event not found for our personal account");
   }
-  const betId = placed.args.betId;
+  const betId = betPlacedLog.args.betId;
 
   // Tuple order matches the `bets` getter outputs:
   // (player, kind, selection, amount, placedAt, settled).
@@ -88,11 +90,11 @@ async function waitForNextSecureRandom(placedAt: bigint) {
       console.log("Random ready — randomTimestamp:", randomTimestamp.toString(), "\n");
       return;
     }
-    await new Promise((r) => setTimeout(r, 15_000));
+    await new Promise((resolve) => setTimeout(resolve, 15_000));
   }
 }
 
-async function settleBet({ ctx, betId }: { ctx: RouletteContext; betId: bigint }) {
+async function settleBet({ context, betId }: { context: RouletteContext; betId: bigint }) {
   const calls: Call[] = [
     {
       target: rouletteAddress,
@@ -104,31 +106,31 @@ async function settleBet({ ctx, betId }: { ctx: RouletteContext; betId: bigint }
       }),
     },
   ];
-  const event = await sendMemoFieldInstruction({
+  const submissionEvent = await sendMemoFieldInstruction({
     label: "settle-bet",
     calls,
-    amountXrp: ctx.memoOnlyAmountXrp,
-    personalAccount: ctx.personalAccount,
-    xrplClient: ctx.xrplClient,
-    xrplWallet: ctx.xrplWallet,
+    amountXrp: context.memoOnlyAmountXrp,
+    personalAccount: context.personalAccount,
+    xrplClient: context.xrplClient,
+    xrplWallet: context.xrplWallet,
   });
 
-  const receipt = await publicClient.waitForTransactionReceipt({ hash: event.transactionHash! });
-  const logs = parseEventLogs({ abi: rouletteAbi, eventName: "BetSettled", logs: receipt.logs });
-  const settled = logs.find((log) => log.args.betId === betId);
-  if (!settled) {
+  const receipt = await publicClient.waitForTransactionReceipt({ hash: submissionEvent.transactionHash! });
+  const betSettledLogs = parseEventLogs({ abi: rouletteAbi, eventName: "BetSettled", logs: receipt.logs });
+  const betSettledLog = betSettledLogs.find((log) => log.args.betId === betId);
+  if (!betSettledLog) {
     throw new Error("BetSettled event not found for this betId");
   }
   console.log(
     "Settled — wheel:",
-    settled.args.wheel,
+    betSettledLog.args.wheel,
     "won:",
-    settled.args.won,
+    betSettledLog.args.won,
     "payout:",
-    formatFxrp(settled.args.payout),
+    formatFxrp(betSettledLog.args.payout),
     "FXRP\n"
   );
-  return settled.args;
+  return betSettledLog.args;
 }
 
 // NOTE:(Nik) Run src/roulette/fund-game.ts first to mint FXRP and buy chips
@@ -152,14 +154,14 @@ async function main() {
   console.log("Personal account address:", personalAccount, "\n");
   console.log("Memo-only amount (XRP, fees only):", memoOnlyAmountXrp, "\n");
 
-  const ctx: RouletteContext = { personalAccount, memoOnlyAmountXrp, xrplClient, xrplWallet };
+  const context: RouletteContext = { personalAccount, memoOnlyAmountXrp, xrplClient, xrplWallet };
 
   const chipsBefore = await readChips(personalAccount);
   console.log("Chips before:", formatFxrp(chipsBefore), "FXRP\n");
 
-  const { betId, placedAt } = await placeBet({ ctx, bet, betAmount });
+  const { betId, placedAt } = await placeBet({ context, bet, betAmount });
   await waitForNextSecureRandom(placedAt);
-  await settleBet({ ctx, betId });
+  await settleBet({ context, betId });
 
   const chipsAfter = await readChips(personalAccount);
   console.log("Chips after:", formatFxrp(chipsAfter), "FXRP\n");

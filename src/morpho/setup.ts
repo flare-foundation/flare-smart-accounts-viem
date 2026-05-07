@@ -3,8 +3,8 @@ import { account } from "../utils/client";
 import { getPersonalAccountAddress } from "../utils/smart-accounts";
 import { computeDirectMintingPaymentAmountXrp } from "../utils/fassets";
 import {
-  COLLATERAL_TOKEN,
-  LOAN_TOKEN,
+  COLLATERAL_TOKEN_ADDRESS,
+  LOAN_TOKEN_ADDRESS,
   MORPHO_MARKET_SHIM_ADDRESS,
   ensureShimSetup,
   fetchMarketDecimals,
@@ -27,13 +27,13 @@ async function main() {
   // 100 units of collateral is exactly the supply size used by borrow.ts;
   // 1000 units of loan token gives a generous buffer over the ~85 borrowed
   // (and slightly more repaid due to interest) per cycle.
-  const collateralFunding = 100n;
-  const loanFunding = 1000n;
+  const collateralFundingUnits = 100n;
+  const loanFundingUnits = 1000n;
 
   const xrplClient = new Client(process.env.XRPL_TESTNET_RPC_URL!);
   const xrplWallet = Wallet.fromSeed(process.env.XRPL_SEED!);
 
-  const [personalAccount, memoOnlyAmountXrp, decimals] = await Promise.all([
+  const [personalAccount, memoOnlyAmountXrp, marketDecimals] = await Promise.all([
     getPersonalAccountAddress(xrplWallet.address),
     computeDirectMintingPaymentAmountXrp({ netMintAmountXrp: 0 }),
     fetchMarketDecimals(),
@@ -44,15 +44,23 @@ async function main() {
   console.log("Morpho market id:", marketId, "\n");
   console.log("Shim address:    ", MORPHO_MARKET_SHIM_ADDRESS, "\n");
 
-  await getAndLogState("Before setup", personalAccount, decimals);
+  await getAndLogState("Before setup", personalAccount, marketDecimals);
 
-  await mintMock(COLLATERAL_TOKEN, personalAccount, collateralFunding * 10n ** BigInt(decimals.collateralDecimals));
-  await mintMock(LOAN_TOKEN, personalAccount, loanFunding * 10n ** BigInt(decimals.loanDecimals));
+  await mintMock(
+    COLLATERAL_TOKEN_ADDRESS,
+    personalAccount,
+    collateralFundingUnits * 10n ** BigInt(marketDecimals.collateralDecimals)
+  );
+  await mintMock(
+    LOAN_TOKEN_ADDRESS,
+    personalAccount,
+    loanFundingUnits * 10n ** BigInt(marketDecimals.loanDecimals)
+  );
   console.log("Funded smart account with collateral and loan tokens.\n");
 
   await ensureShimSetup({ personalAccount, xrplClient, xrplWallet, amountXrp: memoOnlyAmountXrp });
 
-  await getAndLogState("After setup", personalAccount, decimals);
+  await getAndLogState("After setup", personalAccount, marketDecimals);
 }
 
 void main()

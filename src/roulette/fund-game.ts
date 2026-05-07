@@ -9,12 +9,12 @@ import { rouletteAddress } from "./deploys";
 import { formatFxrp, readChips, type RouletteContext } from "./utils";
 
 async function mintFxrpAndApprove({
-  ctx,
+  context,
   fxrpAddress,
   approveAmount,
   paymentAmountXrp,
 }: {
-  ctx: RouletteContext;
+  context: RouletteContext;
   fxrpAddress: Address;
   approveAmount: bigint;
   paymentAmountXrp: number;
@@ -34,13 +34,13 @@ async function mintFxrpAndApprove({
     label: "mint-and-approve",
     calls,
     amountXrp: paymentAmountXrp,
-    personalAccount: ctx.personalAccount,
-    xrplClient: ctx.xrplClient,
-    xrplWallet: ctx.xrplWallet,
+    personalAccount: context.personalAccount,
+    xrplClient: context.xrplClient,
+    xrplWallet: context.xrplWallet,
   });
 }
 
-async function buyChips({ ctx, chipAmount }: { ctx: RouletteContext; chipAmount: bigint }) {
+async function buyChips({ context, chipAmount }: { context: RouletteContext; chipAmount: bigint }) {
   const calls: Call[] = [
     {
       target: rouletteAddress,
@@ -55,10 +55,10 @@ async function buyChips({ ctx, chipAmount }: { ctx: RouletteContext; chipAmount:
   await sendMemoFieldInstruction({
     label: "buy-chips",
     calls,
-    amountXrp: ctx.memoOnlyAmountXrp,
-    personalAccount: ctx.personalAccount,
-    xrplClient: ctx.xrplClient,
-    xrplWallet: ctx.xrplWallet,
+    amountXrp: context.memoOnlyAmountXrp,
+    personalAccount: context.personalAccount,
+    xrplClient: context.xrplClient,
+    xrplWallet: context.xrplWallet,
   });
 }
 
@@ -93,13 +93,13 @@ async function main() {
   console.log("Payment amount (XRP, net mint + fees):", paymentAmountXrp, "\n");
   console.log("Memo-only amount (XRP, fees only):", memoOnlyAmountXrp, "\n");
 
-  const ctx: RouletteContext = { personalAccount, memoOnlyAmountXrp, xrplClient, xrplWallet };
+  const context: RouletteContext = { personalAccount, memoOnlyAmountXrp, xrplClient, xrplWallet };
 
   const chipsBefore = await readChips(personalAccount);
   console.log("Chips before:", formatFxrp(chipsBefore), "FXRP\n");
 
-  await mintFxrpAndApprove({ ctx, fxrpAddress, approveAmount: chipAmount, paymentAmountXrp });
-  await buyChips({ ctx, chipAmount });
+  await mintFxrpAndApprove({ context, fxrpAddress, approveAmount: chipAmount, paymentAmountXrp });
+  await buyChips({ context, chipAmount });
 
   const chipsAfter = await readChips(personalAccount);
   console.log("Chips after:", formatFxrp(chipsAfter), "FXRP\n");

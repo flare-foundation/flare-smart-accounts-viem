@@ -16,7 +16,7 @@ async function main() {
   const xrplClient = new Client(process.env.XRPL_TESTNET_RPC_URL!);
   const xrplWallet = Wallet.fromSeed(process.env.XRPL_SEED!);
 
-  const [personalAccount, memoOnlyAmountXrp, decimals] = await Promise.all([
+  const [personalAccount, memoOnlyAmountXrp, marketDecimals] = await Promise.all([
     getPersonalAccountAddress(xrplWallet.address),
     computeDirectMintingPaymentAmountXrp({ netMintAmountXrp: 0 }),
     fetchMarketDecimals(),
@@ -27,7 +27,7 @@ async function main() {
   console.log("Morpho market id:", marketId, "\n");
   console.log("Shim address:    ", MORPHO_MARKET_SHIM_ADDRESS, "\n");
 
-  const { borrowShares, collateral } = await getAndLogState("Before repay", personalAccount, decimals);
+  const { borrowShares, collateral } = await getAndLogState("Before repay", personalAccount, marketDecimals);
 
   if (borrowShares === 0n && collateral === 0n) {
     console.log("Nothing to repay or withdraw. Exiting.");
@@ -54,7 +54,7 @@ async function main() {
     xrplWallet,
   });
 
-  await getAndLogState("After repay + withdraw", personalAccount, decimals);
+  await getAndLogState("After repay + withdraw", personalAccount, marketDecimals);
 }
 
 void main()

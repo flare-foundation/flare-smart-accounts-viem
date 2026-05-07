@@ -33,13 +33,13 @@ async function main() {
   const xrplClient = new Client(process.env.XRPL_TESTNET_RPC_URL!);
   const xrplWallet = Wallet.fromSeed(process.env.XRPL_SEED!);
 
-  const [personalAccount, memoOnlyAmountXrp, decimals, oraclePrice] = await Promise.all([
+  const [personalAccount, memoOnlyAmountXrp, marketDecimals, oraclePrice] = await Promise.all([
     getPersonalAccountAddress(xrplWallet.address),
     computeDirectMintingPaymentAmountXrp({ netMintAmountXrp: 0 }),
     fetchMarketDecimals(),
     publicClient.readContract({ address: ORACLE_ADDRESS, abi: ORACLE_ABI, functionName: "price" }),
   ]);
-  const { loanDecimals, collateralDecimals, oraclePriceScale } = decimals;
+  const { loanDecimals, collateralDecimals, oraclePriceScale } = marketDecimals;
   const collateralAssets = 100n * 10n ** BigInt(collateralDecimals);
 
   console.log("Personal account:", personalAccount, "\n");
@@ -47,11 +47,11 @@ async function main() {
   console.log("Morpho market id:", marketId, "\n");
   console.log("Shim address:    ", MORPHO_MARKET_SHIM_ADDRESS, "\n");
 
-  await getAndLogState("Before borrow", personalAccount, decimals);
+  await getAndLogState("Before borrow", personalAccount, marketDecimals);
 
   // Compute the max borrow off-chain via Morpho Blue's _isHealthy formula:
   //   maxBorrowAssets = collateral * oraclePrice * lltv / (oraclePriceScale * WAD)
-  // 1 % safety margin absorbs interest accrued during the borrow tx.
+  // 1 % safety margin absorbs interest accrued during the borrow transaction.
   const maxBorrowAssets = (collateralAssets * oraclePrice * LLTV) / (oraclePriceScale * WAD);
   const borrowAssets = (maxBorrowAssets * 99n) / 100n;
   console.log("Oracle price:", oraclePrice.toString());
@@ -82,7 +82,7 @@ async function main() {
     xrplWallet,
   });
 
-  await getAndLogState("After borrow", personalAccount, decimals);
+  await getAndLogState("After borrow", personalAccount, marketDecimals);
 }
 
 void main()

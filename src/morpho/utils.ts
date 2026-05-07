@@ -7,8 +7,8 @@ import { sendMemoFieldInstruction } from "../utils/smart-accounts";
 
 // Coston2 Morpho Blue test stack (mock tokens, mock oracle, mock IRM).
 export const MORPHO_BLUE_ADDRESS = "0x8aE0b3CE90F16E88063516f2d88C8ac2ab552d95" as Address;
-export const LOAN_TOKEN = "0x4984B127c3065f4348858fAFdBa020f2c8633905" as Address;
-export const COLLATERAL_TOKEN = "0x98bf2F2fF322d5eb61D6aE04Df50856525a85D16" as Address;
+export const LOAN_TOKEN_ADDRESS = "0x4984B127c3065f4348858fAFdBa020f2c8633905" as Address;
+export const COLLATERAL_TOKEN_ADDRESS = "0x98bf2F2fF322d5eb61D6aE04Df50856525a85D16" as Address;
 export const ORACLE_ADDRESS = "0x1e80830e9903c839Db803442c976DD2360D47FE0" as Address;
 export const IRM_ADDRESS = "0xDC275701300865D882D44ffe7cb1153535636d1a" as Address;
 export const LLTV = 860000000000000000n; // 86 %
@@ -29,8 +29,8 @@ export const POSITION_ABI = parseAbi([
 ]);
 
 export const marketParams = {
-  loanToken: LOAN_TOKEN,
-  collateralToken: COLLATERAL_TOKEN,
+  loanToken: LOAN_TOKEN_ADDRESS,
+  collateralToken: COLLATERAL_TOKEN_ADDRESS,
   oracle: ORACLE_ADDRESS,
   irm: IRM_ADDRESS,
   lltv: LLTV,
@@ -59,10 +59,10 @@ export const marketId = keccak256(
 // scale per Morpho Blue's IOracle convention: 10 ** (36 + loanDecimals - collateralDecimals).
 // The Coston2 example mock tokens are minimal and don't implement decimals() —
 // fall back to 18 there (matches the values they're actually scaled to).
-async function readDecimalsOrDefault(token: Address): Promise<number> {
+async function readDecimalsOrDefault(tokenAddress: Address): Promise<number> {
   try {
     return (await publicClient.readContract({
-      address: token,
+      address: tokenAddress,
       abi: ERC20Abi,
       functionName: "decimals",
     })) as number;
@@ -73,23 +73,23 @@ async function readDecimalsOrDefault(token: Address): Promise<number> {
 
 export async function fetchMarketDecimals() {
   const [loanDecimals, collateralDecimals] = await Promise.all([
-    readDecimalsOrDefault(LOAN_TOKEN),
-    readDecimalsOrDefault(COLLATERAL_TOKEN),
+    readDecimalsOrDefault(LOAN_TOKEN_ADDRESS),
+    readDecimalsOrDefault(COLLATERAL_TOKEN_ADDRESS),
   ]);
   const oraclePriceScale = 10n ** (36n + BigInt(loanDecimals) - BigInt(collateralDecimals));
   return { loanDecimals, collateralDecimals, oraclePriceScale };
 }
 
-export async function mintMock(token: Address, to: Address, amount: bigint) {
+export async function mintMock(tokenAddress: Address, recipient: Address, amount: bigint) {
   const { request } = await publicClient.simulateContract({
     account,
-    address: token,
+    address: tokenAddress,
     abi: MOCK_ERC20_ABI,
     functionName: "setBalance",
-    args: [to, amount],
+    args: [recipient, amount],
   });
-  const hash = await walletClient.writeContract(request);
-  await publicClient.waitForTransactionReceipt({ hash });
+  const transactionHash = await walletClient.writeContract(request);
+  await publicClient.waitForTransactionReceipt({ hash: transactionHash });
 }
 
 // Brings the smart account → shim authorization state to "fully set up": the
@@ -110,13 +110,13 @@ export async function ensureShimSetup({
 }) {
   const [collateralAllowance, loanAllowance, morphoAuthorized] = (await Promise.all([
     publicClient.readContract({
-      address: COLLATERAL_TOKEN,
+      address: COLLATERAL_TOKEN_ADDRESS,
       abi: ERC20Abi,
       functionName: "allowance",
       args: [personalAccount, MORPHO_MARKET_SHIM_ADDRESS],
     }),
     publicClient.readContract({
-      address: LOAN_TOKEN,
+      address: LOAN_TOKEN_ADDRESS,
       abi: ERC20Abi,
       functionName: "allowance",
       args: [personalAccount, MORPHO_MARKET_SHIM_ADDRESS],
@@ -134,15 +134,15 @@ export async function ensureShimSetup({
     return;
   }
 
-  const memoBase = { amountXrp, personalAccount, xrplClient, xrplWallet };
+  const sharedMemoFields = { amountXrp, personalAccount, xrplClient, xrplWallet };
 
   if (collateralAllowance < APPROVAL_THRESHOLD) {
     await sendMemoFieldInstruction({
-      ...memoBase,
+      ...sharedMemoFields,
       label: "approve-collateral",
       calls: [
         {
-          target: COLLATERAL_TOKEN,
+          target: COLLATERAL_TOKEN_ADDRESS,
           value: 0n,
           data: encodeFunctionData({
             abi: ERC20Abi,
@@ -155,11 +155,11 @@ export async function ensureShimSetup({
   }
   if (loanAllowance < APPROVAL_THRESHOLD) {
     await sendMemoFieldInstruction({
-      ...memoBase,
+      ...sharedMemoFields,
       label: "approve-loan",
       calls: [
         {
-          target: LOAN_TOKEN,
+          target: LOAN_TOKEN_ADDRESS,
           value: 0n,
           data: encodeFunctionData({
             abi: ERC20Abi,
@@ -172,7 +172,7 @@ export async function ensureShimSetup({
   }
   if (!morphoAuthorized) {
     await sendMemoFieldInstruction({
-      ...memoBase,
+      ...sharedMemoFields,
       label: "set-authorization",
       calls: [
         {
@@ -192,7 +192,7 @@ export async function ensureShimSetup({
 export async function getAndLogState(
   label: string,
   smartAccount: Address,
-  decimals: { loanDecimals: number; collateralDecimals: number }
+  marketDecimals: { loanDecimals: number; collateralDecimals: number }
 ) {
   const [position, collateralBalance, loanBalance] = await Promise.all([
     publicClient.readContract({
@@ -202,13 +202,13 @@ export async function getAndLogState(
       args: [marketId, smartAccount],
     }),
     publicClient.readContract({
-      address: COLLATERAL_TOKEN,
+      address: COLLATERAL_TOKEN_ADDRESS,
       abi: ERC20Abi,
       functionName: "balanceOf",
       args: [smartAccount],
     }) as Promise<bigint>,
     publicClient.readContract({
-      address: LOAN_TOKEN,
+      address: LOAN_TOKEN_ADDRESS,
       abi: ERC20Abi,
       functionName: "balanceOf",
       args: [smartAccount],
@@ -219,13 +219,13 @@ export async function getAndLogState(
   // Morpho Blue's VIRTUAL_SHARES = 1e6: at market init `shares = assets * 1e6`,
   // so loan-token-denominated supply/borrow are recovered by formatUnits with
   // (loanDecimals + 6). The conversion drifts slightly as interest accrues.
-  const sharesScale = decimals.loanDecimals + 6;
+  const sharesScale = marketDecimals.loanDecimals + 6;
   console.log(`=== ${label} ===`);
   console.log("  position supply (≈loan tokens):  ", formatUnits(supplyShares, sharesScale));
   console.log("  position borrow (≈loan tokens):  ", formatUnits(borrowShares, sharesScale));
-  console.log("  position collateral:             ", formatUnits(collateral, decimals.collateralDecimals));
-  console.log("  smart-account collateral balance:", formatUnits(collateralBalance, decimals.collateralDecimals));
-  console.log("  smart-account loan-token balance:", formatUnits(loanBalance, decimals.loanDecimals));
+  console.log("  position collateral:             ", formatUnits(collateral, marketDecimals.collateralDecimals));
+  console.log("  smart-account collateral balance:", formatUnits(collateralBalance, marketDecimals.collateralDecimals));
+  console.log("  smart-account loan-token balance:", formatUnits(loanBalance, marketDecimals.loanDecimals));
   console.log("");
 
   return { supplyShares, borrowShares, collateral };
