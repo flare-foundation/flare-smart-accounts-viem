@@ -10,11 +10,10 @@ import {
   getOperatorXrplAddresses,
   getPersonalAccountAddress,
   getVaults,
-  MASTER_ACCOUNT_CONTROLLER_ADDRESS,
   type Vault,
 } from "./utils/smart-accounts";
 import type { CollateralReservedEventType, DepositedEventType } from "./utils/event-types";
-import { getContractAddressByName } from "./utils/flare-contract-registry";
+import { getContractAddressByName, getMasterAccountControllerAddress } from "./utils/flare-contract-registry";
 import { getFxrpBalance } from "./utils/fassets";
 
 async function sendInstruction({
@@ -140,13 +139,14 @@ async function watchForDepositEvent({
   personalAccountAddress: string;
   vaultId: number;
 }) {
+  const masterAccountControllerAddress = await getMasterAccountControllerAddress();
   const vaultAddress = ((await getVaults()).find((vault) => vault.id === BigInt(vaultId)) as Vault).address;
 
   let depositedEvent: DepositedEventType | undefined;
   let depositedEventFound = false;
 
   const unwatchCollateralReserved = publicClient.watchContractEvent({
-    address: MASTER_ACCOUNT_CONTROLLER_ADDRESS,
+    address: masterAccountControllerAddress,
     abi: coston2.iMasterAccountControllerAbi,
     eventName: "Deposited",
     onLogs: (logs) => {
