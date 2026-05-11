@@ -1,5 +1,5 @@
-import { concatHex, encodeAbiParameters, encodeFunctionData, toHex, type Address } from "viem";
-import { Client, Wallet } from "xrpl";
+import { concatHex, encodeAbiParameters, encodeFunctionData, fromHex, toHex, type Address } from "viem";
+import { Client, dropsToXrp, Wallet } from "xrpl";
 import { coston2 } from "@flarenetwork/flare-wagmi-periphery-package";
 import { publicClient } from "./client";
 import { sendXrplPayment } from "./xrpl";
@@ -10,6 +10,19 @@ import {
 } from "./flare-contract-registry";
 import { abi as iMemoInstructionsFacetAbi } from "../abis/IMemoInstructionsFacet";
 import type { UserOperationExecutedEventType } from "./event-types";
+
+export async function getInstructionFee(encodedInstruction: string): Promise<number> {
+  const instructionId = encodedInstruction.slice(0, 4);
+  const instructionIdDecimal = fromHex(instructionId as `0x${string}`, "bigint");
+
+  const requestFee = await publicClient.readContract({
+    address: await getMasterAccountControllerAddress(),
+    abi: coston2.iMasterAccountControllerAbi,
+    functionName: "getInstructionFee",
+    args: [instructionIdDecimal],
+  });
+  return dropsToXrp(Number(requestFee));
+}
 
 export async function getOperatorXrplAddresses() {
   const result = await publicClient.readContract({
