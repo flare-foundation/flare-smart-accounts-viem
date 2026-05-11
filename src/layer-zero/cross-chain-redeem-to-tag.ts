@@ -1,21 +1,22 @@
-import { encodeAbiParameters, formatUnits, pad, type Address } from "viem";
+import { encodeAbiParameters, formatUnits, pad, zeroAddress, type Address } from "viem";
 import { Options } from "@layerzerolabs/lz-v2-utilities";
 import { EndpointId } from "@layerzerolabs/lz-definitions";
 import { coston2 } from "@flarenetwork/flare-wagmi-periphery-package";
 import { account, sepoliaPublicClient, sepoliaWalletClient, publicClient } from "../utils/client";
 import { abi as fxrpOftAbi } from "../abis/FXRPOFT";
 import { calculateAmountToSend } from "../utils/fassets";
-import { getAssetManagerFXRPAddress } from "../utils/flare-contract-registry";
 import type { SendParam } from "./types";
 
 const CONFIG = {
   SEPOLIA_FXRP_OFT: process.env.SEPOLIA_FXRP_OFT as Address | undefined,
-  COSTON2_COMPOSER: (process.env.COSTON2_COMPOSER ?? "0x5051E8db650E9e0E2a3f03010Ee5c60e79CF583E") as Address,
+  COSTON2_COMPOSER: (process.env.COSTON2_COMPOSER ?? "0xa10569DFb38FE7Be211aCe4E4A566Cea387023b0") as Address,
   COSTON2_EID: EndpointId.FLARE_V2_TESTNET,
   EXECUTOR_GAS: 1_000_000,
   COMPOSE_GAS: 1_000_000,
   SEND_LOTS: process.env.SEND_LOTS ?? "1",
   XRP_ADDRESS: process.env.XRP_ADDRESS ?? "rpHuw4bKSjonKRrKKVYUZYYVedg1jyPrmp",
+  // XRPL destination tag registered for redemption (e.g. same as minting tag from MintingTagManager).
+  REDEMPTION_DESTINATION_TAG: BigInt(process.env.REDEMPTION_DESTINATION_TAG ?? "72"),
 } as const;
 
 const REDEMPTION_TIMEOUT_MS = 5 * 60 * 1000;
@@ -23,11 +24,36 @@ const REDEMPTION_POLL_INTERVAL_MS = 10_000;
 // Coston2 RPC caps eth_getLogs to a 30-block range; chunk lookups to stay under it.
 const MAX_BLOCK_RANGE = 25n;
 
-function encodeComposeMessage(amountToSend: bigint, underlyingAddress: string, redeemer: Address): `0x${string}` {
-  return encodeAbiParameters(
-    [{ type: "uint256" }, { type: "string" }, { type: "address" }],
-    [amountToSend, underlyingAddress, redeemer]
-  );
+// Mirrors `IFAssetRedeemComposer.RedeemComposeMessage`.
+const redeemComposeMessageAbi = [
+  {
+    type: "tuple",
+    components: [
+      { name: "redeemer", type: "address" },
+      { name: "redeemerUnderlyingAddress", type: "string" },
+      { name: "redeemWithTag", type: "bool" },
+      { name: "destinationTag", type: "uint256" },
+      { name: "executor", type: "address" },
+      { name: "executorFee", type: "uint256" },
+    ],
+  },
+] as const;
+
+function encodeComposeMessage(
+  redeemer: Address,
+  underlyingAddress: string,
+  destinationTag: bigint
+): `0x${string}` {
+  return encodeAbiParameters(redeemComposeMessageAbi, [
+    {
+      redeemer,
+      redeemerUnderlyingAddress: underlyingAddress,
+      redeemWithTag: true,
+      destinationTag,
+      executor: zeroAddress,
+      executorFee: 0n,
+    },
+  ]);
 }
 
 function buildComposeOptions(): `0x${string}` {
@@ -83,7 +109,8 @@ async function executeSendAndRedeem(
   nativeFee: bigint,
   lzTokenFee: bigint,
   signerAddress: Address,
-  underlyingAddress: string
+  underlyingAddress: string,
+  destinationTag: bigint
 ) {
   const { request } = await sepoliaPublicClient.simulateContract({
     account,
@@ -101,17 +128,17 @@ async function executeSendAndRedeem(
   console.log("Confirmed in block:", receipt.blockNumber);
   console.log("\nTrack your cross-chain transaction:");
   console.log(`https://testnet.layerzeroscan.com/tx/${txHash}`);
-  console.log("\nThe auto-redeem will execute once the message arrives on Coston2.");
+  console.log("\nThe auto-redeem-with-tag will execute once the message arrives on Coston2.");
   console.log("XRP will be sent to:", underlyingAddress);
+  console.log("Destination tag:", destinationTag.toString());
 
   return txHash;
 }
 
-async function waitForRedemptionOnCoston2(fromBlock: bigint) {
-  const assetManagerAddress = await getAssetManagerFXRPAddress();
+async function waitForFAssetRedeemedOnCoston2(redeemer: Address, fromBlock: bigint) {
   const deadline = Date.now() + REDEMPTION_TIMEOUT_MS;
 
-  console.log("\nWaiting for RedemptionRequested event on Coston2...");
+  console.log("\nWaiting for FAssetRedeemed event on Coston2 composer...");
 
   let cursor = fromBlock;
   while (Date.now() < deadline) {
@@ -120,10 +147,10 @@ async function waitForRedemptionOnCoston2(fromBlock: bigint) {
       const chunkEnd = cursor + MAX_BLOCK_RANGE - 1n;
       const toBlock = chunkEnd > latest ? latest : chunkEnd;
       const logs = await publicClient.getContractEvents({
-        address: assetManagerAddress,
-        abi: coston2.iAssetManagerAbi,
-        eventName: "RedemptionRequested",
-        args: { redeemer: CONFIG.COSTON2_COMPOSER },
+        address: CONFIG.COSTON2_COMPOSER,
+        abi: coston2.ifAssetRedeemComposerAbi,
+        eventName: "FAssetRedeemed",
+        args: { redeemer },
         fromBlock: cursor,
         toBlock,
       });
@@ -135,7 +162,7 @@ async function waitForRedemptionOnCoston2(fromBlock: bigint) {
     await new Promise((resolve) => setTimeout(resolve, REDEMPTION_POLL_INTERVAL_MS));
   }
 
-  throw new Error(`RedemptionRequested event not observed within ${REDEMPTION_TIMEOUT_MS}ms`);
+  throw new Error(`FAssetRedeemed event not observed within ${REDEMPTION_TIMEOUT_MS}ms`);
 }
 
 async function main() {
@@ -164,8 +191,13 @@ async function main() {
   console.log("Amount:", amountToSend.toString(), "FXRP base units");
   console.log("XRP Address:", CONFIG.XRP_ADDRESS);
   console.log("Redeemer:", signerAddress);
+  console.log("Destination tag:", CONFIG.REDEMPTION_DESTINATION_TAG.toString());
 
-  const composeMsg = encodeComposeMessage(amountToSend, CONFIG.XRP_ADDRESS, signerAddress);
+  const composeMsg = encodeComposeMessage(
+    signerAddress,
+    CONFIG.XRP_ADDRESS,
+    CONFIG.REDEMPTION_DESTINATION_TAG
+  );
   const extraOptions = buildComposeOptions();
   const sendParam = buildSendParam(amountToSend, composeMsg, extraOptions);
 
@@ -173,13 +205,21 @@ async function main() {
 
   const { nativeFee, lzTokenFee } = await quoteFee(oftAddress, sendParam);
 
-  console.log("\nSending", formatUnits(amountToSend, decimals), "FXRP to Coston2 with auto-redeem...");
+  console.log("\nSending", formatUnits(amountToSend, decimals), "FXRP to Coston2 with auto-redeem-with-tag...");
   console.log("Target composer:", CONFIG.COSTON2_COMPOSER);
 
-  await executeSendAndRedeem(oftAddress, sendParam, nativeFee, lzTokenFee, signerAddress, CONFIG.XRP_ADDRESS);
+  await executeSendAndRedeem(
+    oftAddress,
+    sendParam,
+    nativeFee,
+    lzTokenFee,
+    signerAddress,
+    CONFIG.XRP_ADDRESS,
+    CONFIG.REDEMPTION_DESTINATION_TAG
+  );
 
-  const redemptionEvent = await waitForRedemptionOnCoston2(startBlock);
-  console.log("\nRedemptionRequested event observed on Coston2:");
+  const redemptionEvent = await waitForFAssetRedeemedOnCoston2(signerAddress, startBlock);
+  console.log("\nFAssetRedeemed event observed on Coston2:");
   console.log(redemptionEvent);
 }
 
