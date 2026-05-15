@@ -26,9 +26,7 @@ export function getDirectMintingDailyLimitUBA(assetManagerAddress: Address): Pro
   });
 }
 
-export function getDirectMintingHourlyLimiterState(
-  assetManagerAddress: Address,
-): Promise<readonly [bigint, bigint]> {
+export function getDirectMintingHourlyLimiterState(assetManagerAddress: Address): Promise<readonly [bigint, bigint]> {
   return publicClient.readContract({
     address: assetManagerAddress,
     abi: coston2.iDirectMintingSettingsAbi,
@@ -36,9 +34,7 @@ export function getDirectMintingHourlyLimiterState(
   });
 }
 
-export function getDirectMintingDailyLimiterState(
-  assetManagerAddress: Address,
-): Promise<readonly [bigint, bigint]> {
+export function getDirectMintingDailyLimiterState(assetManagerAddress: Address): Promise<readonly [bigint, bigint]> {
   return publicClient.readContract({
     address: assetManagerAddress,
     abi: coston2.iDirectMintingSettingsAbi,
@@ -46,9 +42,7 @@ export function getDirectMintingDailyLimiterState(
   });
 }
 
-export function getDirectMintingsUnblockUntilTimestamp(
-  assetManagerAddress: Address,
-): Promise<bigint> {
+export function getDirectMintingsUnblockUntilTimestamp(assetManagerAddress: Address): Promise<bigint> {
   return publicClient.readContract({
     address: assetManagerAddress,
     abi: coston2.iDirectMintingSettingsAbi,
@@ -56,9 +50,7 @@ export function getDirectMintingsUnblockUntilTimestamp(
   });
 }
 
-export function getDirectMintingLargeMintingThresholdUBA(
-  assetManagerAddress: Address,
-): Promise<bigint> {
+export function getDirectMintingLargeMintingThresholdUBA(assetManagerAddress: Address): Promise<bigint> {
   return publicClient.readContract({
     address: assetManagerAddress,
     abi: coston2.iDirectMintingSettingsAbi,
@@ -66,9 +58,7 @@ export function getDirectMintingLargeMintingThresholdUBA(
   });
 }
 
-export function getDirectMintingLargeMintingDelaySeconds(
-  assetManagerAddress: Address,
-): Promise<bigint> {
+export function getDirectMintingLargeMintingDelaySeconds(assetManagerAddress: Address): Promise<bigint> {
   return publicClient.readContract({
     address: assetManagerAddress,
     abi: coston2.iDirectMintingSettingsAbi,

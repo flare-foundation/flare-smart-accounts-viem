@@ -39,11 +39,7 @@ const redeemComposeMessageAbi = [
   },
 ] as const;
 
-function encodeComposeMessage(
-  redeemer: Address,
-  underlyingAddress: string,
-  destinationTag: bigint
-): `0x${string}` {
+function encodeComposeMessage(redeemer: Address, underlyingAddress: string, destinationTag: bigint): `0x${string}` {
   return encodeAbiParameters(redeemComposeMessageAbi, [
     {
       redeemer,
@@ -193,11 +189,7 @@ async function main() {
   console.log("Redeemer:", signerAddress);
   console.log("Destination tag:", CONFIG.REDEMPTION_DESTINATION_TAG.toString());
 
-  const composeMsg = encodeComposeMessage(
-    signerAddress,
-    CONFIG.XRP_ADDRESS,
-    CONFIG.REDEMPTION_DESTINATION_TAG
-  );
+  const composeMsg = encodeComposeMessage(signerAddress, CONFIG.XRP_ADDRESS, CONFIG.REDEMPTION_DESTINATION_TAG);
   const extraOptions = buildComposeOptions();
   const sendParam = buildSendParam(amountToSend, composeMsg, extraOptions);
 

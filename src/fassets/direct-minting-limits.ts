@@ -92,7 +92,7 @@ function printWindow(
     effectiveStart: bigint;
     nextResetAt: bigint;
     now: bigint;
-  },
+  }
 ) {
   const { limitUBA, usedUBA, remainingUBA, effectiveStart, nextResetAt, now } = opts;
   const usedPct = limitUBA === 0n ? 0 : Number((usedUBA * 10000n) / limitUBA) / 100;
@@ -118,42 +118,27 @@ async function main() {
     unblockUntilTimestamp,
     largeThresholdUBA,
     largeDelaySeconds,
-  ]: [
-    bigint,
-    bigint,
-    bigint,
-    readonly [bigint, bigint],
-    readonly [bigint, bigint],
-    bigint,
-    bigint,
-    bigint,
-  ] = await Promise.all([
-    getAssetMintingGranularityUBA(assetManagerAddress),
-    getDirectMintingHourlyLimitUBA(assetManagerAddress),
-    getDirectMintingDailyLimitUBA(assetManagerAddress),
-    getDirectMintingHourlyLimiterState(assetManagerAddress),
-    getDirectMintingDailyLimiterState(assetManagerAddress),
-    getDirectMintingsUnblockUntilTimestamp(assetManagerAddress),
-    getDirectMintingLargeMintingThresholdUBA(assetManagerAddress),
-    getDirectMintingLargeMintingDelaySeconds(assetManagerAddress),
-  ]);
+  ]: [bigint, bigint, bigint, readonly [bigint, bigint], readonly [bigint, bigint], bigint, bigint, bigint] =
+    await Promise.all([
+      getAssetMintingGranularityUBA(assetManagerAddress),
+      getDirectMintingHourlyLimitUBA(assetManagerAddress),
+      getDirectMintingDailyLimitUBA(assetManagerAddress),
+      getDirectMintingHourlyLimiterState(assetManagerAddress),
+      getDirectMintingDailyLimiterState(assetManagerAddress),
+      getDirectMintingsUnblockUntilTimestamp(assetManagerAddress),
+      getDirectMintingLargeMintingThresholdUBA(assetManagerAddress),
+      getDirectMintingLargeMintingDelaySeconds(assetManagerAddress),
+    ]);
 
   const now = BigInt(Math.floor(Date.now() / 1000));
   const limiterDisabled = unblockUntilTimestamp > now;
 
-  console.log(
-    "Windows are clock-aligned tumbling: hourly snaps to UTC hour boundaries, daily to 00:00 UTC.",
-  );
+  console.log("Windows are clock-aligned tumbling: hourly snaps to UTC hour boundaries, daily to 00:00 UTC.");
   console.log("Unused capacity does not roll over; over-cap mints are delayed, not rejected.\n");
 
   // Limiter state is returned as raw AMG (uint64); convert to UBA via amgGranularityUBA
   // before passing into the window math.
-  const computeAndPrint = (
-    label: string,
-    limitUBA: bigint,
-    state: readonly [bigint, bigint],
-    sizeSeconds: bigint,
-  ) => {
+  const computeAndPrint = (label: string, limitUBA: bigint, state: readonly [bigint, bigint], sizeSeconds: bigint) => {
     const [windowStart, mintedAmg] = state;
     const result = computeWindowState({
       now,
@@ -174,13 +159,10 @@ async function main() {
     console.log(
       "Limiter DISABLED until:",
       formatTimestamp(unblockUntilTimestamp, now),
-      "— hourly/daily caps are not enforced right now.",
+      "— hourly/daily caps are not enforced right now."
     );
   } else {
-    console.log(
-      "Limiter active (unblockUntilTimestamp =",
-      unblockUntilTimestamp.toString() + ")",
-    );
+    console.log("Limiter active (unblockUntilTimestamp =", unblockUntilTimestamp.toString() + ")");
   }
   console.log("Large minting threshold:", formatUba(largeThresholdUBA));
   console.log("Large minting delay:    ", `${largeDelaySeconds.toString()}s`);

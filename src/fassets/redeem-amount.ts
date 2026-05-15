@@ -49,7 +49,7 @@ async function main() {
   });
 
   const redemptionEvent = redemptionLogs.find(
-    (log) => log.args.redeemer.toLowerCase() === account.address.toLowerCase(),
+    (log) => log.args.redeemer.toLowerCase() === account.address.toLowerCase()
   );
 
   if (!redemptionEvent) {

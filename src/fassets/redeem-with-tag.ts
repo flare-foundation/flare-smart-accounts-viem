@@ -36,12 +36,7 @@ async function main() {
     address: assetManagerAddress,
     abi: coston2.iAssetManagerAbi,
     functionName: "redeemWithTag",
-    args: [
-      REDEEM_AMOUNT_UBA,
-      REDEEMER_UNDERLYING_ADDRESS_STRING,
-      EXECUTOR_ZERO_ADDRESS,
-      REDEMPTION_DESTINATION_TAG,
-    ],
+    args: [REDEEM_AMOUNT_UBA, REDEEMER_UNDERLYING_ADDRESS_STRING, EXECUTOR_ZERO_ADDRESS, REDEMPTION_DESTINATION_TAG],
   });
 
   const txHash = await walletClient.writeContract(request);
@@ -57,7 +52,7 @@ async function main() {
   });
 
   const redemptionEvent = redemptionLogs.find(
-    (log) => log.args.redeemer.toLowerCase() === account.address.toLowerCase(),
+    (log) => log.args.redeemer.toLowerCase() === account.address.toLowerCase()
   );
 
   if (!redemptionEvent) {

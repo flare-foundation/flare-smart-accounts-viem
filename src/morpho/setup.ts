@@ -51,11 +51,7 @@ async function main() {
     personalAccount,
     collateralFundingUnits * 10n ** BigInt(marketDecimals.collateralDecimals)
   );
-  await mintMock(
-    LOAN_TOKEN_ADDRESS,
-    personalAccount,
-    loanFundingUnits * 10n ** BigInt(marketDecimals.loanDecimals)
-  );
+  await mintMock(LOAN_TOKEN_ADDRESS, personalAccount, loanFundingUnits * 10n ** BigInt(marketDecimals.loanDecimals));
   console.log("Funded smart account with collateral and loan tokens.\n");
 
   await ensureShimSetup({ personalAccount, xrplClient, xrplWallet, amountXrp: memoOnlyAmountXrp });

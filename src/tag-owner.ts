@@ -10,12 +10,12 @@ async function main() {
   const mintingTagManagerAddress = await getMintingTagManagerAddress(assetManagerAddress);
   console.log("MintingTagManager address:", mintingTagManagerAddress, "\n");
 
-  const owner = (await publicClient.readContract({
+  const owner = await publicClient.readContract({
     address: mintingTagManagerAddress,
     abi: coston2.iMintingTagManagerAbi,
     functionName: "ownerOf",
     args: [TAG],
-  }));
+  });
 
   console.log("Owner of tag", TAG.toString() + ":", owner, "\n");
 }
