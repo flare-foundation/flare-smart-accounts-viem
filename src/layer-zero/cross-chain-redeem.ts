@@ -10,7 +10,7 @@ import type { SendParam } from "./types";
 
 const CONFIG = {
   SEPOLIA_FXRP_OFT: process.env.SEPOLIA_FXRP_OFT as Address | undefined,
-  COSTON2_COMPOSER: (process.env.COSTON2_COMPOSER ?? "0x5051E8db650E9e0E2a3f03010Ee5c60e79CF583E") as Address,
+  COSTON2_COMPOSER: (process.env.COSTON2_COMPOSER ?? "0xa10569DFb38FE7Be211aCe4E4A566Cea387023b0") as Address,
   COSTON2_EID: EndpointId.FLARE_V2_TESTNET,
   EXECUTOR_GAS: 1_000_000,
   COMPOSE_GAS: 1_000_000,

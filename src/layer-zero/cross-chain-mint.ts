@@ -8,7 +8,7 @@ import { abi as fxrpLzBridgeShimAbi } from "../abis/FxrpLzBridgeShim";
 import { abi as fxrpOftAbi } from "../abis/FXRPOFT";
 
 const CONFIG = {
-  FXRP_LZ_BRIDGE_SHIM: process.env.FXRP_LZ_BRIDGE_SHIM as Address | undefined,
+  FXRP_LZ_BRIDGE_SHIM: (process.env.FXRP_LZ_BRIDGE_SHIM ?? "0x525CCe1C6d053B0e7f41A2011B536aA992200Be0") as Address,
   SEPOLIA_FXRP_OFT: process.env.SEPOLIA_FXRP_OFT as Address | undefined,
   FXRP_MINT_AMOUNT_XRP: 10,
 } as const;
@@ -44,16 +44,12 @@ async function waitForOftReceivedOnSepolia({
 }
 
 // NOTE:(Nik) For this example to work, you first need to faucet C2FLR to your personal account address.
-// The shim contract (FxrpLzBridgeShim.sol at the project root) must be deployed on Coston2
-// and its address set in FXRP_LZ_BRIDGE_SHIM. Deploy params for Coston2 → Sepolia:
-//   fxrp=0x0b6A3645c240605887a5532109323A3E12273dc7
+// FxrpLzBridgeShim resolves the FXRP token address on-chain from the AssetManagerFXRP
+// registry entry, so only the route-specific params need to be passed in at deploy time:
 //   oftAdapter=0xCd3d2127935Ae82Af54Fc31cCD9D3440dbF46639
 //   dstEid=40161 (SEPOLIA_V2_TESTNET)
 //   executorGas=200000
 async function main() {
-  if (!CONFIG.FXRP_LZ_BRIDGE_SHIM) {
-    throw new Error("FXRP_LZ_BRIDGE_SHIM env var is required (address of the deployed FxrpLzBridgeShim)");
-  }
   if (!CONFIG.SEPOLIA_FXRP_OFT) {
     throw new Error("SEPOLIA_FXRP_OFT env var is required (address of the FXRP OFT on Sepolia)");
   }
@@ -117,7 +113,7 @@ async function main() {
       data: encodeFunctionData({
         abi: fxrpLzBridgeShimAbi,
         functionName: "bridge",
-        args: [amountToBridge, recipient, personalAccount],
+        args: [amountToBridge, recipient],
       }),
     },
   ];
