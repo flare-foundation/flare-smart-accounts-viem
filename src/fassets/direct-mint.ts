@@ -1,8 +1,8 @@
 import { Client, Wallet } from "xrpl";
 import type { Address } from "viem";
 import { sendXrplPayment } from "../utils/xrpl";
-import { getPersonalAccountAddress } from "../utils/smart-accounts";
-import { getContractAddressByName, getDirectMintingPaymentAddress } from "../utils/flare-contract-registry";
+import { getDirectMintingPaymentAddress, getPersonalAccountAddress } from "../utils/smart-accounts";
+import { getContractAddressByName } from "../utils/flare-contract-registry";
 import { computeDirectMintingPaymentAmountXrp, getFxrpBalance, waitForDirectMintingExecuted } from "../utils/fassets";
 
 // The memo is a packed 32-byte PaymentReference (see AssetManager's PaymentReference.sol):
@@ -67,7 +67,7 @@ async function main() {
   console.log("Personal account address:", personalAccountAddress, "\n");
 
   const [coreVaultXrplAddress, initialBalance, paymentAmountXrp] = await Promise.all([
-    getDirectMintingPaymentAddress(assetManagerAddress),
+    getDirectMintingPaymentAddress(),
     getFxrpBalance(personalAccountAddress),
     computeDirectMintingPaymentAmountXrp({ netMintAmountXrp: fxrpMintAmount }),
   ]);

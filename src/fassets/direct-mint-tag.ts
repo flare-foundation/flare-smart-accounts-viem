@@ -2,12 +2,12 @@ import { Client, Wallet } from "xrpl";
 import type { Address } from "viem";
 import { sendXrplPayment } from "../utils/xrpl";
 import { account, publicClient, walletClient } from "../utils/client";
-import { getPersonalAccountAddress } from "../utils/smart-accounts";
 import {
-  getContractAddressByName,
   getDirectMintingPaymentAddress,
   getMintingTagManagerAddress,
-} from "../utils/flare-contract-registry";
+  getPersonalAccountAddress,
+} from "../utils/smart-accounts";
+import { getContractAddressByName } from "../utils/flare-contract-registry";
 import { computeDirectMintingPaymentAmountXrp, getFxrpBalance, waitForDirectMintingExecuted } from "../utils/fassets";
 import { coston2 } from "@flarenetwork/flare-wagmi-periphery-package";
 
@@ -86,7 +86,7 @@ async function main() {
   ]);
   console.log("Personal account address:", personalAccountAddress, "\n");
 
-  const mintingTagManagerAddress = await getMintingTagManagerAddress(assetManagerAddress);
+  const mintingTagManagerAddress = await getMintingTagManagerAddress();
   console.log("MintingTagManager address:", mintingTagManagerAddress, "\n");
 
   const tag = await getOrReserveTag(mintingTagManagerAddress, personalAccountAddress);
@@ -95,7 +95,7 @@ async function main() {
   console.log("Minting recipient for tag:", configuredRecipient, "\n");
 
   const [coreVaultXrplAddress, initialBalance, paymentAmountXrp] = await Promise.all([
-    getDirectMintingPaymentAddress(assetManagerAddress),
+    getDirectMintingPaymentAddress(),
     getFxrpBalance(personalAccountAddress),
     computeDirectMintingPaymentAmountXrp({ netMintAmountXrp: fxrpMintAmount }),
   ]);

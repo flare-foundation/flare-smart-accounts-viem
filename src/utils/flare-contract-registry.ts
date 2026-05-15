@@ -31,19 +31,3 @@ export async function getFxrpAddress(): Promise<Address> {
     functionName: "fAsset",
   });
 }
-
-export async function getDirectMintingPaymentAddress(assetManagerAddress: Address): Promise<string> {
-  return publicClient.readContract({
-    address: assetManagerAddress,
-    abi: coston2.iDirectMintingAbi,
-    functionName: "directMintingPaymentAddress",
-  });
-}
-
-export async function getMintingTagManagerAddress(assetManagerAddress: Address): Promise<Address> {
-  return publicClient.readContract({
-    address: assetManagerAddress,
-    abi: coston2.iDirectMintingSettingsAbi,
-    functionName: "getMintingTagManager",
-  });
-}
