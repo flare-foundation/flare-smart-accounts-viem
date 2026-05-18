@@ -1,6 +1,7 @@
 import { coston2 } from "@flarenetwork/flare-wagmi-periphery-package";
 import { parseEventLogs, type Address } from "viem";
 import { account, publicClient, walletClient } from "../utils/client";
+import { validateRedeemAmountUBA } from "../utils/fassets";
 import { getContractAddressByName } from "../utils/flare-contract-registry";
 
 // Amount to redeem in UBA.
@@ -16,20 +17,14 @@ async function main() {
   const assetManagerAddress = await getContractAddressByName("AssetManagerFXRP");
   console.log("AssetManagerFXRP address:", assetManagerAddress, "\n");
 
-  const minimumRedeemAmountUBA = await publicClient.readContract({
-    address: assetManagerAddress,
-    abi: coston2.iAssetManagerAbi,
-    functionName: "minimumRedeemAmountUBA",
-  });
+  const { minimumRedeemAmountUBA, redemptionQueueTotalValueUBA } = await validateRedeemAmountUBA(
+    REDEEM_AMOUNT_UBA,
+    assetManagerAddress
+  );
   console.log("minimumRedeemAmountUBA:", minimumRedeemAmountUBA.toString(), "\n");
+  console.log("Redemption queue total value UBA:", redemptionQueueTotalValueUBA.toString(), "\n");
   console.log("Requested redeem amount UBA:", REDEEM_AMOUNT_UBA.toString(), "\n");
   console.log("Redemption destination tag:", REDEMPTION_DESTINATION_TAG.toString(), "\n");
-
-  if (REDEEM_AMOUNT_UBA < minimumRedeemAmountUBA) {
-    throw new Error(
-      `Redeem amount (${REDEEM_AMOUNT_UBA.toString()}) must be greater than minimumRedeemAmountUBA (${minimumRedeemAmountUBA.toString()}).`
-    );
-  }
 
   const { request } = await publicClient.simulateContract({
     account,
