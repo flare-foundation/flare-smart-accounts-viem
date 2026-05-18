@@ -5,6 +5,8 @@ import { publicClient } from "./client";
 import { getAssetManagerFXRPAddress, getContractAddressByName, getFxrpAddress } from "./flare-contract-registry";
 import type { DirectMintingExecutedEventType } from "./event-types";
 
+const MAX_REDEMPTION_QUEUE_PAGES = 100;
+
 export async function getFxrpBalance(address: Address) {
   const fxrpAddress = await getFxrpAddress();
   const fxrpBalance = await publicClient.readContract({
@@ -25,6 +27,71 @@ export async function getFxrpDecimals() {
     args: [],
   });
   return decimals;
+}
+
+export async function getRedemptionQueueTotalValueUBA(assetManagerAddress?: Address): Promise<bigint> {
+  const address = assetManagerAddress ?? (await getAssetManagerFXRPAddress());
+  const settings = await publicClient.readContract({
+    address,
+    abi: coston2.iAssetManagerAbi,
+    functionName: "getSettings",
+  });
+  const pageSize = BigInt(settings.maxRedeemedTickets);
+
+  let totalValueUBA = 0n;
+  let firstRedemptionTicketId = 0n;
+
+  for (let page = 0; page < MAX_REDEMPTION_QUEUE_PAGES; page++) {
+    const [queue, nextRedemptionTicketId] = await publicClient.readContract({
+      address,
+      abi: coston2.iAssetManagerAbi,
+      functionName: "redemptionQueue",
+      args: [firstRedemptionTicketId, pageSize],
+    });
+
+    for (const ticket of queue) {
+      totalValueUBA += ticket.ticketValueUBA;
+    }
+
+    if (nextRedemptionTicketId === 0n) {
+      return totalValueUBA;
+    }
+    firstRedemptionTicketId = nextRedemptionTicketId;
+  }
+
+  throw new Error(
+    `Redemption queue pagination exceeded ${MAX_REDEMPTION_QUEUE_PAGES} pages.`
+  );
+}
+
+export async function validateRedeemAmountUBA(
+  requestedAmountUBA: bigint,
+  assetManagerAddress?: Address
+): Promise<{ minimumRedeemAmountUBA: bigint; redemptionQueueTotalValueUBA: bigint }> {
+  const address = assetManagerAddress ?? (await getAssetManagerFXRPAddress());
+
+  const [minimumRedeemAmountUBA, redemptionQueueTotalValueUBA] = await Promise.all([
+    publicClient.readContract({
+      address,
+      abi: coston2.iAssetManagerAbi,
+      functionName: "minimumRedeemAmountUBA",
+    }),
+    getRedemptionQueueTotalValueUBA(address),
+  ]);
+
+  if (requestedAmountUBA < minimumRedeemAmountUBA) {
+    throw new Error(
+      `Redeem amount (${requestedAmountUBA.toString()}) must be at least minimumRedeemAmountUBA (${minimumRedeemAmountUBA.toString()}).`
+    );
+  }
+
+  if (requestedAmountUBA > redemptionQueueTotalValueUBA) {
+    throw new Error(
+      `Redeem amount (${requestedAmountUBA.toString()}) exceeds total redemption queue value (${redemptionQueueTotalValueUBA.toString()} UBA).`
+    );
+  }
+
+  return { minimumRedeemAmountUBA, redemptionQueueTotalValueUBA };
 }
 
 export async function calculateAmountToSend(lots: bigint): Promise<bigint> {
