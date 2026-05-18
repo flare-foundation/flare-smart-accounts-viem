@@ -3,11 +3,7 @@ import { Client, dropsToXrp, Wallet } from "xrpl";
 import { coston2 } from "@flarenetwork/flare-wagmi-periphery-package";
 import { publicClient } from "./client";
 import { sendXrplPayment } from "./xrpl";
-import {
-  getContractAddressByName,
-  getDirectMintingPaymentAddress,
-  getMasterAccountControllerAddress,
-} from "./flare-contract-registry";
+import { getAssetManagerFXRPAddress, getMasterAccountControllerAddress } from "./flare-contract-registry";
 import { abi as iMemoInstructionsFacetAbi } from "../abis/IMemoInstructionsFacet";
 import type { UserOperationExecutedEventType } from "./event-types";
 
@@ -158,6 +154,24 @@ export async function getNonce(personalAccount: Address): Promise<bigint> {
   }) as Promise<bigint>;
 }
 
+export async function getDirectMintingPaymentAddress(): Promise<string> {
+  const assetManagerAddress = await getAssetManagerFXRPAddress();
+  return publicClient.readContract({
+    address: assetManagerAddress,
+    abi: coston2.iDirectMintingAbi,
+    functionName: "directMintingPaymentAddress",
+  });
+}
+
+export async function getMintingTagManagerAddress(): Promise<Address> {
+  const assetManagerAddress = await getAssetManagerFXRPAddress();
+  return publicClient.readContract({
+    address: assetManagerAddress,
+    abi: coston2.iDirectMintingSettingsAbi,
+    functionName: "getMintingTagManager",
+  });
+}
+
 export function encodeExecuteUserOpMemo({
   calls,
   walletId,
@@ -217,7 +231,10 @@ export async function sendMemoFieldInstruction({
 }) {
   console.log(`[${label}] calls:`, calls, "\n");
 
-  const nonce = await getNonce(personalAccount);
+  const [nonce, coreVaultXrplAddress] = await Promise.all([
+    getNonce(personalAccount),
+    getDirectMintingPaymentAddress(),
+  ]);
   console.log(`[${label}] current nonce:`, nonce, "\n");
 
   const memoData = encodeExecuteUserOpMemo({
@@ -227,9 +244,6 @@ export async function sendMemoFieldInstruction({
     sender: personalAccount,
     nonce,
   });
-
-  const assetManagerAddress = await getContractAddressByName("AssetManagerFXRP");
-  const coreVaultXrplAddress = await getDirectMintingPaymentAddress(assetManagerAddress);
 
   const transaction = await sendXrplPayment({
     destination: coreVaultXrplAddress,

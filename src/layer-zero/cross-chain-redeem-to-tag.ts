@@ -15,7 +15,11 @@ const CONFIG = {
   COMPOSE_GAS: 1_000_000,
   SEND_LOTS: process.env.SEND_LOTS ?? "1",
   XRP_ADDRESS: process.env.XRP_ADDRESS ?? "rpHuw4bKSjonKRrKKVYUZYYVedg1jyPrmp",
-  // XRPL destination tag registered for redemption (e.g. same as minting tag from MintingTagManager).
+  // XRPL destination tag pre-registered on the MintingTagManager and bound to a recipient.
+  // The tag must first be reserved (via `MintingTagManager.reserve()`) and tied to the
+  // redeemer using `setMintingRecipient(tag, recipient)` before this script can use it.
+  // See the "Redeem with Tag" section of the Redemption guide for the registration flow:
+  //   https://dev.flare.network/fassets/redemption#redeem-with-tag
   REDEMPTION_DESTINATION_TAG: BigInt(process.env.REDEMPTION_DESTINATION_TAG ?? "72"),
 } as const;
 

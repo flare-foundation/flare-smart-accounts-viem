@@ -1,13 +1,11 @@
-import type { Address } from "viem";
 import { publicClient } from "./utils/client";
-import { getContractAddressByName, getMintingTagManagerAddress } from "./utils/flare-contract-registry";
+import { getMintingTagManagerAddress } from "./utils/smart-accounts";
 import { coston2 } from "@flarenetwork/flare-wagmi-periphery-package";
 
 const TAG: bigint = 42n;
 
 async function main() {
-  const assetManagerAddress = await getContractAddressByName("AssetManagerFXRP");
-  const mintingTagManagerAddress = await getMintingTagManagerAddress(assetManagerAddress);
+  const mintingTagManagerAddress = await getMintingTagManagerAddress();
   console.log("MintingTagManager address:", mintingTagManagerAddress, "\n");
 
   const owner = await publicClient.readContract({
